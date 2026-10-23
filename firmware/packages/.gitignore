@@ -1,0 +1,3 @@
+# Keep custom package sources here; generated objects belong in the build tree.
+*.o
+*.so

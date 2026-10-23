@@ -1,0 +1,46 @@
+{
+  "prepared_date": "2026-10-24",
+  "repositories": {
+    "third_party/openwrt": {
+      "url": "https://github.com/openwrt/openwrt.git",
+      "commit": "5192094fd6fb7050ec3c859cf9f3f8fee5b10d91",
+      "branch": "main"
+    },
+    "third_party/ax55-port": {
+      "url": "https://github.com/kuncy7/openwrt-ax55-v1.git",
+      "commit": "2274d250b72200c03f9b5dcfc8454fb05de778b6",
+      "branch": "master"
+    },
+    "third_party/tplink-firmware-tools": {
+      "url": "https://github.com/lmadarassy/tp-link-ax55-fw-hacks.git",
+      "commit": "f9fe0a05c08969cc05ac038af51fbf52be6b99ce",
+      "branch": "master",
+      "local_patches": [
+        "firmware/patches/tplink-tools/0001-harden-firmware-repacking-tools.patch"
+      ]
+    }
+  },
+  "feeds": {
+    "packages": {
+      "commit": "482434bca8196f47ddb924c0c16e755119bcdf79"
+    },
+    "luci": {
+      "commit": "1c67452adb01413e78feb109180bd15186612ead"
+    },
+    "routing": {
+      "commit": "4b9891b9136259f93294a424507ed24c5e8c1cbd"
+    },
+    "telephony": {
+      "commit": "5d68d53c160a325ea9d03fce393e051573bcc736"
+    },
+    "video": {
+      "commit": "bea0fb29f9573ab4c9bd77a9a495127958992d53"
+    }
+  },
+  "vm_image": {
+    "url": "https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-x86-64-generic-ext4-combined.img.gz",
+    "sha256": "d85c845dbccd2d2c91f6342dfdd3d021fc991c68050026be2c70d1c523ac186e",
+    "revision": "r37625-bf763871e9",
+    "target": "x86/64"
+  }
+}

@@ -1,0 +1,74 @@
+# Local tooling and generated state
+/.scripts/
+/.cache/
+
+# External source checkouts
+/third_party/
+
+# Local notes
+/docs/
+
+# Generated build, download and test directories
+/artifacts/
+/output/
+/build/
+/build_dir/
+/staging_dir/
+/bin/
+/dl/
+/feeds/
+/tmp/
+/logs/
+/dist/
+/coverage/
+/.config
+/.config.old
+
+# Firmware images and downloaded archives accidentally placed at the root
+/*.bin
+/*.ubi
+/*.itb
+/*.img
+/*.img.gz
+/*.qcow2
+/*.vmdk
+/*.iso
+/*.zip
+/*.tar
+/*.tar.gz
+/*.tar.xz
+/*.tar.zst
+
+# Python caches and generated objects
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.o
+*.a
+
+# Logs, temporary files and patch/editor backups
+*.log
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+*.swp
+*.swo
+*~
+
+# Local editor and operating-system metadata
+/.idea/
+/.vscode/
+.DS_Store
+Thumbs.db
+
+# Local environment and build signing keys
+/.env
+/.env.*
+!/.env.example
+/private-key.pem
+/key-build
+/key-build.pub

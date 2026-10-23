@@ -1,0 +1,66 @@
+{
+  "audited_base": "5192094fd6fb7050ec3c859cf9f3f8fee5b10d91",
+  "scope": "Selected AX55 v1 board issues and default-stack security advisories; not an exhaustive OpenWrt audit",
+  "hardware_tested": false,
+  "issues": [
+    {
+      "id": "dnsmasq-reload-race",
+      "source": "https://github.com/openwrt/openwrt/pull/25983",
+      "patch": "firmware/patches/0001-dnsmasq-avoid-reload-restart-race.patch",
+      "status": "enabled-vm-regression-tested-ax55-runtime-pending",
+      "notes": "CrossBox adaptation preserves ready process identity and updates each requested instance. The original crash was not reproduced by the first baseline stress run."
+    },
+    {
+      "id": "ipq5018-rtl8367s-serdes-order",
+      "source": "https://github.com/openwrt/openwrt/pull/25153",
+      "patch": "firmware/patches/0002-ipq5018-defer-switch-serdes-bringup.patch",
+      "status": "enabled-compilation-tested-ax55-hardware-pending",
+      "notes": "Pending upstream fix; cold and warm starts plus packet traffic must be checked on a supported RTL8367S AX55."
+    },
+    {
+      "id": "rtl8367s-vb-family-d",
+      "source": "https://github.com/openwrt/openwrt/pull/25101",
+      "status": "unsupported-not-enabled",
+      "notes": "Draft support is unfinished and conflicts with the plain SerDes candidate. Do not combine blindly or assume all v1 units have the same switch."
+    },
+    {
+      "id": "ipq5018-gpll0-clock",
+      "source": "https://github.com/openwrt/openwrt/pull/25386",
+      "status": "already-fixed-in-base"
+    },
+    {
+      "id": "spinand-ecc-context-uaf",
+      "source": "https://git.kernel.org/linus/f94c9b68bb5fdbef9f841da493d5305ff634ebb5",
+      "status": "already-fixed-in-base"
+    },
+    {
+      "id": "qcn6122-regional-board-data",
+      "source": "https://github.com/kuncy7/openwrt-ax55-v1/issues/3",
+      "status": "needs-region-and-hardware-validation",
+      "notes": "No universal board-data replacement applied."
+    },
+    {
+      "id": "oem-1.5.11-downgrade",
+      "source": "https://openwrt.org/toh/tp-link/archer_ax55_v1",
+      "status": "not-verified-on-user-router"
+    }
+  ],
+  "selected_security_advisories": [
+    {
+      "id": "GHSA-jw5r-xhf5-2xcq",
+      "status": "fix-present-in-downloaded-cgi-io-source"
+    },
+    {
+      "id": "GHSA-hhmc-92hw-535f",
+      "status": "fix-present-in-downloaded-odhcpd-and-luci-source"
+    },
+    {
+      "id": "GHSA-jw28-hxcm-j934",
+      "status": "fix-present-in-downloaded-procd-source"
+    },
+    {
+      "id": "GHSA-rcc6-v4r6-gj4m",
+      "status": "fix-present-in-downloaded-jsonfilter-source"
+    }
+  ]
+}

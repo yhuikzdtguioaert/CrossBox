@@ -1,0 +1,8 @@
+{
+  "name": "CrossBox",
+  "upstream": "third_party/openwrt",
+  "config": "configs/archer-ax55-v1.seed",
+  "files": "firmware/files",
+  "packages": "firmware/packages",
+  "patches": "firmware/patches/series"
+}

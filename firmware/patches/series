@@ -1,0 +1,3 @@
+# Maintained patchset. DNS passed VM regressions; SerDes needs AX55 hardware tests.
+0001-dnsmasq-avoid-reload-restart-race.patch
+0002-ipq5018-defer-switch-serdes-bringup.patch

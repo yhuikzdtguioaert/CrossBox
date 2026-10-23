@@ -1,0 +1,4 @@
+# Experimental A/B profile. Apply only to a separate measured build.
+# Does not remove packages; real AX55 throughput/latency still need validation.
+# CONFIG_KERNEL_CC_OPTIMIZE_FOR_PERFORMANCE is not set
+CONFIG_KERNEL_CC_OPTIMIZE_FOR_SIZE=y

@@ -1,0 +1,292 @@
+Origin: User-supplied Antigravity changes, with CrossBox bounds, flush and unpack-offset checks
+Base-Commit: f9fe0a05c08969cc05ac038af51fbf52be6b99ce
+Scope: TP-Link OEM preparation tools; not an OpenWrt firmware patch
+
+diff --git a/01-unpack.sh b/01-unpack.sh
+index 9b87da8..b9cc96d 100755
+--- a/01-unpack.sh
++++ b/01-unpack.sh
+@@ -1,25 +1,67 @@
+-#!/bin/bash -e
++#!/bin/bash
++set -euo pipefail
++
+ if [ $# -ne 1 ]; then
+-  echo "Usage: $0 <firmware>"
++  echo "Usage: $0 <firmware>" >&2
+   exit 1
+ fi
+ 
+ if [ ! -f "$1" ]; then
+-  echo "Error: file not found: $1"
++  echo "Error: file not found: $1" >&2
++  exit 1
++fi
++
++if ! command -v ubireader_extract_images >/dev/null 2>&1; then
++  echo "Error: ubireader_extract_images not found (install ubi_reader)" >&2
++  exit 1
++fi
++
++if ! command -v unsquashfs >/dev/null 2>&1; then
++  echo "Error: unsquashfs not found (install squashfs-tools)" >&2
+   exit 1
+ fi
+ 
+-firmware=$1
+-pos=$(grep -a -b -m 1 "UBI#" "$firmware" | cut -d ":" -f 1)
++firmware="$1"
++if [ -e tmp ] || [ -e squashfs-root ]; then
++  echo "Error: use a clean working directory; tmp or squashfs-root already exists" >&2
++  exit 1
++fi
++pos=$(python3 - "$firmware" <<'PY'
++import sys
++with open(sys.argv[1], 'rb') as image:
++    consumed, tail = 0, b''
++    while chunk := image.read(65536):
++        data = tail + chunk
++        index = data.find(b'UBI#')
++        if index >= 0:
++            offset = consumed - len(tail) + index
++            if offset == 0:
++                raise SystemExit('Error: raw UBI image has no TP-Link firmware header')
++            print(offset)
++            break
++        consumed += len(chunk)
++        tail = data[-3:]
++    else:
++        raise SystemExit("Error: UBI header marker ('UBI#') not found")
++PY
++)
++
+ mkdir -p tmp
+ 
+-dd if=$firmware of=tmp/header.bin bs=$pos count=1
+-dd if=$firmware of=tmp/ubi.img bs=$pos skip=1
++dd if="$firmware" of=tmp/header.bin bs="$pos" count=1 status=none
++dd if="$firmware" of=tmp/ubi.img bs="$pos" skip=1 status=none
+ 
+-cd tmp
+-ubireader_extract_images ubi.img
++(
++  cd tmp
++  ubireader_extract_images ubi.img
++)
++
++rootfs_img=$(find tmp -name "*rootfs.ubifs" | head -n 1)
++if [ -z "$rootfs_img" ]; then
++  echo "Error: extracted rootfs volume not found in tmp" >&2
++  exit 1
++fi
+ 
+-cd ..
+-find -name "*rootfs.ubifs" -exec unsquashfs {} \;
++unsquashfs -f "$rootfs_img"
+ 
+ echo "Successfully unpacked rootfs to squashfs-root. Modify anything you want and repack the firmware"
+diff --git a/02-repack.sh b/02-repack.sh
+index e37f57a..f38d2fd 100755
+--- a/02-repack.sh
++++ b/02-repack.sh
+@@ -1,21 +1,58 @@
+-#!/bin/bash -e
++#!/bin/bash
++set -euo pipefail
++
++script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
++
+ if [ $# -ne 1 ]; then
+-  echo "Usage: $0 <new firmware filename>"
++  echo "Usage: $0 <new firmware filename>" >&2
+   exit 1
+ fi
+ 
+ if [ -f "$1" ]; then
+-  echo "Error: file already exists: $1"
++  echo "Error: file already exists: $1" >&2
++  exit 1
++fi
++
++if [ ! -d "squashfs-root" ]; then
++  echo "Error: squashfs-root directory not found" >&2
++  exit 1
++fi
++
++if [ ! -f "tmp/header.bin" ]; then
++  echo "Error: tmp/header.bin not found (did you run 01-unpack.sh first?)" >&2
++  exit 1
++fi
++
++if ! command -v mksquashfs >/dev/null 2>&1; then
++  echo "Error: mksquashfs not found (install squashfs-tools)" >&2
+   exit 1
+ fi
+-firmware=$1
++
++if ! command -v ubinize >/dev/null 2>&1; then
++  echo "Error: ubinize not found (install mtd-utils)" >&2
++  exit 1
++fi
++
++if [ ! -x "$script_dir/bin/md5-fix" ]; then
++  echo "Building md5-fix..."
++  make -C "$script_dir"
++fi
++
++firmware="$1"
+ 
+ mksquashfs squashfs-root/ tmp/rootfs.bin -comp xz -b 256K -noappend
+-kernel=$(find -name "*kernel.ubifs")
+-[[ -f tmp/kernel.itb ]] && rm -f tmp/kernel.itb
+-cp -f $kernel tmp/kernel.itb
++
++kernel=$(find tmp -name "*kernel.ubifs" | head -n 1)
++if [ -z "$kernel" ]; then
++  echo "Error: extracted kernel volume not found in tmp" >&2
++  exit 1
++fi
++
++cp -f "$kernel" tmp/kernel.itb
+ ubinize -m 2048 -p 128KiB -o tmp/ubi-new.img etc/ubinize-ipq50xx.cfg
+-cat tmp/header.bin tmp/ubi-new.img >$firmware
+-printf '\x50\x72' | dd of=$firmware bs=1 seek=28 count=2 conv=notrunc
+-bin/md5-fix $firmware
++cat tmp/header.bin tmp/ubi-new.img > "$firmware"
++printf '\x50\x72' | dd of="$firmware" bs=1 seek=28 count=2 conv=notrunc status=none
++"$script_dir/bin/md5-fix" "$firmware"
+ rm -rf tmp
++
++echo "Successfully repacked firmware to $firmware"
+diff --git a/src/md5-fix.c b/src/md5-fix.c
+index bf1039f..ca68e42 100644
+--- a/src/md5-fix.c
++++ b/src/md5-fix.c
+@@ -1,8 +1,8 @@
+ #include <stdio.h>
+ #include <stdlib.h>
++#include <stdint.h>
+ #include <string.h>
+-#include <arpa/inet.h>
+-#include <openssl/md5.h>
++#include <openssl/evp.h>
+ 
+ #define SAFELOADER_PREAMBLE_SIZE	0x14
+ 
+@@ -19,13 +19,21 @@ static const uint8_t md5_salt[16] = {
+         0xac, 0x2a, 0x9f, 0x4e,
+ };
+ 
+-static void put_md5(uint8_t *md5, uint8_t *buffer, unsigned int len) {
+-        MD5_CTX ctx;
++static int put_md5(uint8_t *md5, const uint8_t *buffer, size_t len) {
++        EVP_MD_CTX *ctx = EVP_MD_CTX_new();
++        if (!ctx)
++                return -1;
+ 
+-        MD5_Init(&ctx);
+-        MD5_Update(&ctx, md5_salt, (unsigned int)sizeof(md5_salt));
+-        MD5_Update(&ctx, buffer, len);
+-        MD5_Final(md5, &ctx);
++        if (EVP_DigestInit_ex(ctx, EVP_md5(), NULL) != 1 ||
++            EVP_DigestUpdate(ctx, md5_salt, sizeof(md5_salt)) != 1 ||
++            EVP_DigestUpdate(ctx, buffer, len) != 1 ||
++            EVP_DigestFinal_ex(ctx, md5, NULL) != 1) {
++                EVP_MD_CTX_free(ctx);
++                return -1;
++        }
++
++        EVP_MD_CTX_free(ctx);
++        return 0;
+ }
+ 
+ /** Stores a uint32 as big endian */
+@@ -36,36 +44,76 @@ static inline void put32(uint8_t *buf, uint32_t val) {
+         buf[3] = val;
+ }
+ 
+-
+ int main(int argc, char *argv[]) {
+     if (argc != 2) {
+-        printf("Usage: %s <firmware>\n", argv[0]);
++        fprintf(stderr, "Usage: %s <firmware>\n", argv[0]);
+         return 1;
+     }
+     FILE *fp = fopen(argv[1], "rb");
+     if (fp == NULL) {
+-        printf("File not exists!\nUsage: %s <firmware>\n", argv[0]);
++        fprintf(stderr, "File does not exist: %s\nUsage: %s <firmware>\n", argv[1], argv[0]);
++        return 1;
++    }
++    if (fseek(fp, 0, SEEK_END) != 0) {
++        fprintf(stderr, "Error: fseek failed on %s\n", argv[1]);
++        fclose(fp);
++        return 1;
++    }
++    long raw_size = ftell(fp);
++    if (raw_size < (long)SAFELOADER_PREAMBLE_SIZE) {
++        fprintf(stderr, "Error: file too small (%ld bytes)\n", raw_size);
++        fclose(fp);
++        return 1;
++    }
++    if ((uintmax_t)raw_size > UINT32_MAX) {
++        fprintf(stderr, "Error: firmware exceeds the 32-bit length field\n");
++        fclose(fp);
+         return 1;
+     }
+-    fseek(fp, 0, SEEK_END);
+-    u_int32_t file_size = ftell(fp);
++    size_t file_size = (size_t)raw_size;
+     uint8_t *image = malloc(file_size);
+-    fseek(fp, 0, SEEK_SET);
+-    fread(image, file_size, 1, fp);
++    if (!image) {
++        fprintf(stderr, "Error: malloc(%zu) failed\n", file_size);
++        fclose(fp);
++        return 1;
++    }
++    if (fseek(fp, 0, SEEK_SET) != 0 || fread(image, 1, file_size, fp) != file_size) {
++        fprintf(stderr, "Error: failed to read file %s\n", argv[1]);
++        free(image);
++        fclose(fp);
++        return 1;
++    }
+     fclose(fp);
+ 
+     // write file length to the first 4 byte in network byte order
+-    put32(image, file_size);
++    put32(image, (uint32_t)file_size);
+ 
+     // write md5
+-    put_md5(image + 0x04, image + SAFELOADER_PREAMBLE_SIZE, file_size - SAFELOADER_PREAMBLE_SIZE);
+-    fp = fopen(argv[1], "w");
++    if (put_md5(image + 0x04, image + SAFELOADER_PREAMBLE_SIZE, file_size - SAFELOADER_PREAMBLE_SIZE) != 0) {
++        fprintf(stderr, "Error: failed to calculate MD5 digest\n");
++        free(image);
++        return 1;
++    }
++
++    fp = fopen(argv[1], "wb");
+     if (fp == NULL) {
+-        printf("File not writable!\n");
++        fprintf(stderr, "File not writable: %s\n", argv[1]);
++        free(image);
+         return 1;
+     }
+ 
+-    fwrite(image, file_size, 1, fp);
++    if (fwrite(image, 1, file_size, fp) != file_size) {
++        fprintf(stderr, "Error: failed to write updated firmware\n");
++        free(image);
++        fclose(fp);
++        return 1;
++    }
+ 
++    if (fclose(fp) != 0) {
++        fprintf(stderr, "Error: failed to flush updated firmware\n");
++        free(image);
++        return 1;
++    }
++    free(image);
+     return 0;
+ }

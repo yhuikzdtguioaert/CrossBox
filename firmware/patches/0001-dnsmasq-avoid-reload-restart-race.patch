@@ -1,0 +1,92 @@
+Origin: https://github.com/openwrt/openwrt/pull/25983
+Upstream-Commit: 4432bd5460040681c2a59cd028b687e7c633f8cd
+Upstream-Status: Submitted; CrossBox adaptation
+CrossBox-Status: VM regression tested; AX55 runtime validation pending
+CrossBox-Changes: Preserve process identity and jail readiness; update all requested
+ instances; use collision-free state records without eval; preserve reload exit status;
+ package release 5 to 6. Hyphenated UCI section names are invalid and rejected.
+
+diff --git a/package/network/services/dnsmasq/Makefile b/package/network/services/dnsmasq/Makefile
+--- a/package/network/services/dnsmasq/Makefile
++++ b/package/network/services/dnsmasq/Makefile
+@@ -10,7 +10,7 @@
+ PKG_NAME:=dnsmasq
+ PKG_UPSTREAM_VERSION:=2.93
+ PKG_VERSION:=$(subst test,~~test,$(subst rc,~rc,$(PKG_UPSTREAM_VERSION)))
+-PKG_RELEASE:=5
++PKG_RELEASE:=6
+ 
+ PKG_SOURCE:=$(PKG_NAME)-$(PKG_UPSTREAM_VERSION).tar.xz
+ PKG_SOURCE_URL:=https://thekelleys.org.uk/dnsmasq/
+diff --git a/package/network/services/dnsmasq/files/dnsmasq.init b/package/network/services/dnsmasq/files/dnsmasq.init
+--- a/package/network/services/dnsmasq/files/dnsmasq.init
++++ b/package/network/services/dnsmasq/files/dnsmasq.init
+@@ -1406,9 +1406,66 @@
+ 	fi
+ }
+ 
++# Snapshot a live instance only after its jail is ready. Keep the process
++# identity and lifecycle fields: a replacement process must not inherit a
++# SIGHUP intended for the instance that was running before the reload.
++dnsmasq_instance_state() {
++	local info running jail_state config_sum
++
++	info="$(ubus call service list '{"name":"dnsmasq","verbose":true}' 2>/dev/null |
++		jsonfilter -e "@.dnsmasq.instances[\"$1\"]")"
++	[ -n "$info" ] || return 1
++	running="$(printf '%s\n' "$info" | jsonfilter -e '@.running')"
++	[ "$running" = true ] || return 1
++	jail_state="$(printf '%s\n' "$info" | jsonfilter -e '@.jail_state')"
++	[ -z "$jail_state" ] || [ "$jail_state" = running ] || return 1
++	config_sum="$(md5sum "$BASECONFIGFILE.$1" 2>/dev/null)" || return 1
++	printf '%s\n%s\n' "$info" "$config_sum" | md5sum | cut -d' ' -f1
++}
++
+ reload_service() {
+-	rc_procd start_service "$@"
+-	procd_send_signal dnsmasq "$@"
++	local instances="$*" cfg state entry before before_states=""
++
++	# UCI section names permit only letters, digits and underscores.
++	for cfg in "$@"; do
++		case "$cfg" in
++			''|*[!a-zA-Z0-9_]*) return 2 ;;
++		esac
++	done
++	[ -n "$instances" ] || {
++		config_load dhcp
++		instances="$(config_foreach echo dnsmasq)"
++	}
++
++	for cfg in $instances; do
++		state="$(dnsmasq_instance_state "$cfg")" || state=""
++		before_states="$before_states $cfg:$state"
++	done
++
++	if [ "$#" -gt 0 ]; then
++		for cfg in "$@"; do
++			rc_procd start_service "$cfg"
++		done
++	else
++		rc_procd start_service
++	fi
++
++	# A restarted instance reads the generated files itself. Signal only the
++	# same ready process whose complete state and config stayed unchanged.
++	# In particular, do not signal a ujail that is still starting.
++	for cfg in $instances; do
++		state="$(dnsmasq_instance_state "$cfg")" || state=""
++		before=""
++		for entry in $before_states; do
++			case "$entry" in
++				"$cfg:"*) before="${entry#*:}"; break ;;
++			esac
++		done
++		[ -n "$before" ] && [ -n "$state" ] && [ "$state" = "$before" ] &&
++			procd_send_signal dnsmasq "$cfg"
++	done
++
++	return 0
+ }
+ 
+ stop_service() {
