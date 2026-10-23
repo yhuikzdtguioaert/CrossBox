@@ -1,0 +1,4013 @@
+diff --git a/package/boot/uboot-tools/uboot-envtools/files/qualcommax_ipq50xx b/package/boot/uboot-tools/uboot-envtools/files/qualcommax_ipq50xx
+index d825f885dd..34131f6d31 100644
+--- a/package/boot/uboot-tools/uboot-envtools/files/qualcommax_ipq50xx
++++ b/package/boot/uboot-tools/uboot-envtools/files/qualcommax_ipq50xx
+@@ -15,7 +15,7 @@ iodata,wn-dax3000gr|\
+ zyxel,scr50axe)
+ 	ubootenv_add_mtd "0:appsblenv" "0x0" "0x40000" "0x20000"
+ 	;;
+-glinet,gl-b3000)
++glinet,gl-b3000|tplink,archer-ax55-v1)
+ 	ubootenv_add_mtd "0:APPSBLENV" "0x0" "0x40000" "0x20000"
+ 	;;
+ linksys,mr5500|\
+diff --git a/package/firmware/ipq-wifi/Makefile b/package/firmware/ipq-wifi/Makefile
+index d3605dd622..27d5fcc833 100644
+--- a/package/firmware/ipq-wifi/Makefile
++++ b/package/firmware/ipq-wifi/Makefile
+@@ -13,6 +13,13 @@ PKG_FLAGS:=nonshared
+ 
+ include $(INCLUDE_DIR)/package.mk
+ 
++define Build/Prepare
++	$(call Build/Prepare/Default)
++ifneq ($(wildcard ./files/*),)
++	$(CP) ./files/* $(PKG_BUILD_DIR)/
++endif
++endef
++
+ define Build/Compile
+ endef
+ 
+@@ -80,6 +87,7 @@ ALLWIFIBOARDS:= \
+ 	redmi_ax6 \
+ 	skspruce_wia3300-20 \
+ 	spectrum_sax1v1k \
++	tplink_ax55v1 \
+ 	tplink_deco-x80-5g \
+ 	tplink_eap610-outdoor \
+ 	tplink_eap620hd-v1 \
+@@ -265,6 +273,7 @@ $(eval $(call generate-ipq-wifi-package,prpl_haze,prpl Haze))
+ $(eval $(call generate-ipq-wifi-package,redmi_ax6,Redmi AX6))
+ $(eval $(call generate-ipq-wifi-package,skspruce_wia3300-20,SKSpruce WIA3300-20))
+ $(eval $(call generate-ipq-wifi-package,spectrum_sax1v1k,Spectrum SAX1V1K))
++$(eval $(call generate-ipq-wifi-package,tplink_ax55v1,TP-Link Archer AX55 v1))
+ $(eval $(call generate-ipq-wifi-package,tplink_deco-x80-5g,TP-Link Deco X80-5G))
+ $(eval $(call generate-ipq-wifi-package,tplink_eap610-outdoor,TPLink EAP610-Outdoor))
+ $(eval $(call generate-ipq-wifi-package,tplink_eap620hd-v1,TP-Link EAP620 HD v1))
+diff --git a/target/linux/qualcommax/config-6.12 b/target/linux/qualcommax/config-6.12
+index d0dd32a0aa..8fa4712eb5 100644
+--- a/target/linux/qualcommax/config-6.12
++++ b/target/linux/qualcommax/config-6.12
+@@ -147,6 +147,7 @@ CONFIG_DMA_OF=y
+ CONFIG_DMA_VIRTUAL_CHANNELS=y
+ CONFIG_DTC=y
+ CONFIG_DT_IDLE_STATES=y
++# CONFIG_DWMAC_IPQ5018 is not set
+ CONFIG_EDAC_SUPPORT=y
+ CONFIG_EXCLUSIVE_SYSTEM_RAM=y
+ CONFIG_FIXED_PHY=y
+@@ -330,6 +331,7 @@ CONFIG_PCIE_QCOM_COMMON=y
+ CONFIG_PCI_DOMAINS=y
+ CONFIG_PCI_DOMAINS_GENERIC=y
+ CONFIG_PCI_MSI=y
++# CONFIG_PCS_QCA_UNIPHY is not set
+ CONFIG_PER_VMA_LOCK=y
+ CONFIG_PGTABLE_LEVELS=3
+ CONFIG_PHYLIB=y
+@@ -341,6 +343,7 @@ CONFIG_PHYS_ADDR_T_64BIT=y
+ # CONFIG_PHY_QCOM_IPQ4019_USB is not set
+ # CONFIG_PHY_QCOM_IPQ806X_SATA is not set
+ # CONFIG_PHY_QCOM_IPQ806X_USB is not set
++# CONFIG_PHY_QCOM_IPQ5018_USB_SS is not set
+ # CONFIG_PHY_QCOM_M31_USB is not set
+ # CONFIG_PHY_QCOM_PCIE2 is not set
+ CONFIG_PHY_QCOM_QMP=y
+diff --git a/target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/ipq5018-dwmac.dtsi b/target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/ipq5018-dwmac.dtsi
+new file mode 100644
+index 0000000000..a2abf9f20c
+--- /dev/null
++++ b/target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/ipq5018-dwmac.dtsi
+@@ -0,0 +1,78 @@
++&soc {
++	gmac0: ethernet@39c00000 {
++		compatible = "qcom,ipq5018-gmac", "snps,dwmac";
++		reg = <0x39c00000 0x10000>;
++		reg-names = "stmmaceth";
++		clocks = <&gcc GCC_GMAC0_SYS_CLK>,
++			 <&gcc GCC_GMAC0_CFG_CLK>,
++			 <&gcc GCC_GMAC0_PTP_CLK>,
++			 <&gcc GCC_SNOC_GMAC0_AHB_CLK>,
++			 <&gcc GCC_SNOC_GMAC0_AXI_CLK>,
++			 <&gcc GCC_GMAC0_RX_CLK>,
++			 <&gcc GCC_GMAC0_TX_CLK>;
++		clock-names = "stmmaceth",
++			      "pclk",
++			      "ptp_ref",
++			      "ahb",
++			      "axi",
++			      "rx",
++			      "tx";
++		assigned-clocks = <&gcc GCC_GMAC0_SYS_CLK>,
++				  <&gcc GCC_GMAC0_CFG_CLK>,
++				  <&gcc GCC_GMAC0_PTP_CLK>,
++				  <&gcc GCC_SNOC_GMAC0_AHB_CLK>,
++				  <&gcc GCC_SNOC_GMAC0_AXI_CLK>;
++		assigned-clock-rates = <240000000>,
++				       <240000000>,
++				       <240000000>,
++				       <240000000>,
++				       <240000000>;
++		resets = <&gcc GCC_GMAC0_BCR>;
++		reset-names = "stmmaceth";
++		interrupts = <GIC_SPI 101 IRQ_TYPE_LEVEL_HIGH>;
++		interrupt-names = "macirq";
++
++		phy-handle = <&ge_phy>;
++		phy-mode = "sgmii";
++
++		status = "disabled";
++	};
++
++	gmac1: ethernet@39d00000 {
++		compatible = "qcom,ipq5018-gmac", "snps,dwmac";
++		reg = <0x39d00000 0x10000>;
++		reg-names = "stmmaceth";
++		clocks = <&gcc GCC_GMAC1_SYS_CLK>,
++			 <&gcc GCC_GMAC1_CFG_CLK>,
++			 <&gcc GCC_GMAC1_PTP_CLK>,
++			 <&gcc GCC_SNOC_GMAC1_AHB_CLK>,
++			 <&gcc GCC_SNOC_GMAC1_AXI_CLK>,
++			 <&gcc GCC_GMAC1_RX_CLK>,
++			 <&gcc GCC_GMAC1_TX_CLK>;
++		clock-names = "stmmaceth",
++			      "pclk",
++			      "ptp_ref",
++			      "ahb",
++			      "axi",
++			      "rx",
++			      "tx";
++		assigned-clocks = <&gcc GCC_GMAC1_SYS_CLK>,
++				  <&gcc GCC_GMAC1_CFG_CLK>,
++				  <&gcc GCC_GMAC1_PTP_CLK>,
++				  <&gcc GCC_SNOC_GMAC1_AHB_CLK>,
++				  <&gcc GCC_SNOC_GMAC1_AXI_CLK>;
++		assigned-clock-rates = <240000000>,
++				       <240000000>,
++				       <240000000>,
++				       <240000000>,
++				       <240000000>;
++		resets = <&gcc GCC_GMAC1_BCR>;
++		reset-names = "stmmaceth";
++		interrupts = <GIC_SPI 109 IRQ_TYPE_LEVEL_HIGH>;
++		interrupt-names = "macirq";
++
++		pcs-handle = <&uniphy0>;
++
++		status = "disabled";
++	};
++};
+\ No newline at end of file
+diff --git a/target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/ipq5018-tplink-archer-ax55-v1.dts b/target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/ipq5018-tplink-archer-ax55-v1.dts
+new file mode 100644
+index 0000000000..6e42dfbbe4
+--- /dev/null
++++ b/target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/ipq5018-tplink-archer-ax55-v1.dts
+@@ -0,0 +1,604 @@
++// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
++
++/dts-v1/;
++
++#include "ipq5018.dtsi"
++#include "ipq5018-dwmac.dtsi"
++#include "ipq5018-qcn6122.dtsi"
++
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/input/input.h>
++#include <dt-bindings/leds/common.h>
++
++/ {
++	model = "TP-Link Archer AX55 v1";
++	compatible = "tplink,archer-ax55-v1", "qcom,ipq5018";
++
++	aliases {
++		serial0 = &blsp1_uart1;
++		led-boot = &led_power;
++		led-failsafe = &led_power;
++		led-running = &led_power;
++		led-upgrade = &led_power;
++	};
++
++	chosen {
++		stdout-path = "serial0:115200n8";
++		/*
++		 * Stage 3a brings the board up via an initramfs image booted
++		 * from RAM (TFTP); root= is unused for now and is revisited
++		 * with the on-flash layout in stage 3e.
++		 */
++		bootargs-append = " root=/dev/ubiblock0_1 coherent_pool=2M";
++	};
++
++	keys {
++		compatible = "gpio-keys";
++		pinctrl-0 = <&button_pins>;
++		pinctrl-names = "default";
++
++		button-reset {
++			label = "reset";
++			gpios = <&tlmm 25 GPIO_ACTIVE_LOW>;
++			linux,code = <KEY_RESTART>;
++			debounce-interval = <60>;
++		};
++
++		/* the case labels this "WPS/Wi-Fi"; stock treats it as a
++		 * wifi toggle (KEY_WLAN) - use rfkill, the OpenWrt idiom */
++		button-wifi {
++			label = "wifi";
++			gpios = <&tlmm 31 GPIO_ACTIVE_LOW>;
++			linux,code = <KEY_RFKILL>;
++			debounce-interval = <60>;
++		};
++	};
++
++	leds {
++		compatible = "gpio-leds";
++		pinctrl-0 = <&led_pins>;
++		pinctrl-names = "default";
++
++		/*
++		 * LED GPIOs confirmed against the stock device tree. GPIO39 is
++		 * the 5 GHz WLAN LED (the OEM "reset_gpio 39" in the switch
++		 * node is bogus - the real RTL8367S reset is GPIO33).
++		 */
++		led_power: led-power {
++			color = <LED_COLOR_ID_GREEN>;
++			function = LED_FUNCTION_POWER;
++			gpios = <&tlmm 18 GPIO_ACTIVE_HIGH>;
++		};
++
++		led-lan {
++			color = <LED_COLOR_ID_GREEN>;
++			function = LED_FUNCTION_LAN;
++			gpios = <&tlmm 10 GPIO_ACTIVE_HIGH>;
++		};
++
++		led-wan-green {
++			color = <LED_COLOR_ID_GREEN>;
++			function = LED_FUNCTION_WAN_ONLINE;
++			gpios = <&tlmm 11 GPIO_ACTIVE_HIGH>;
++		};
++
++		led-wan-orange {
++			color = <LED_COLOR_ID_ORANGE>;
++			function = LED_FUNCTION_WAN;
++			gpios = <&tlmm 22 GPIO_ACTIVE_HIGH>;
++		};
++
++		led-wlan2g {
++			color = <LED_COLOR_ID_GREEN>;
++			function = LED_FUNCTION_WLAN_2GHZ;
++			gpios = <&tlmm 13 GPIO_ACTIVE_HIGH>;
++		};
++
++		led-wlan5g {
++			color = <LED_COLOR_ID_GREEN>;
++			function = LED_FUNCTION_WLAN_5GHZ;
++			gpios = <&tlmm 39 GPIO_ACTIVE_HIGH>;
++		};
++
++		led-usb {
++			color = <LED_COLOR_ID_GREEN>;
++			function = LED_FUNCTION_USB;
++			gpios = <&tlmm 38 GPIO_ACTIVE_HIGH>;
++			trigger-sources = <&usb_port1>;
++			linux,default-trigger = "usbport";
++		};
++	};
++
++	/* vendor "usb_enabled" GPIO - switches the USB port's VBUS rail */
++	reg_usb_vbus: regulator-usb-vbus {
++		compatible = "regulator-fixed";
++		regulator-name = "usb_vbus";
++		regulator-min-microvolt = <5000000>;
++		regulator-max-microvolt = <5000000>;
++		gpios = <&tlmm 27 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
++		/* nothing consumes this supply (the qcom dwc3 glue ignores
++		 * vbus-supply), so keep the rail permanently on */
++		regulator-always-on;
++		regulator-boot-on;
++	};
++};
++
++&sleep_clk {
++	clock-frequency = <32000>;
++};
++
++&xo_board_clk {
++	clock-div = <4>;
++	clock-mult = <1>;
++};
++
++&blsp1_uart1 {
++	pinctrl-0 = <&serial_0_pins>;
++	pinctrl-names = "default";
++	status = "okay";
++};
++
++&crypto {
++	status = "okay";
++};
++
++&cryptobam {
++	status = "okay";
++};
++
++&prng {
++	status = "okay";
++};
++
++&qfprom {
++	status = "okay";
++};
++
++&qpic_bam {
++	status = "okay";
++};
++
++&qpic_nand {
++	pinctrl-0 = <&qpic_pins>;
++	pinctrl-names = "default";
++	status = "okay";
++
++	nand@0 {
++		compatible = "spi-nand";
++		reg = <0>;
++
++		nand-ecc-engine = <&qpic_nand>;
++		nand-ecc-strength = <4>;
++		nand-ecc-step-size = <512>;
++		nand-bus-width = <8>;
++
++		/*
++		 * Layout from the stock firmware device tree (OEM
++		 * "IPQ5018/AP-MP03.3"). Dual rootfs (rootfs / rootfs_1);
++		 * the final OpenWrt flashing layout is handled in stage 3e.
++		 */
++		partitions {
++			compatible = "fixed-partitions";
++			#address-cells = <1>;
++			#size-cells = <1>;
++
++			partition@0 {
++				label = "0:SBL1";
++				reg = <0x0 0x80000>;
++				read-only;
++			};
++
++			partition@80000 {
++				label = "0:MIBIB";
++				reg = <0x80000 0x80000>;
++				read-only;
++			};
++
++			partition@100000 {
++				label = "0:BOOTCONFIG";
++				reg = <0x100000 0x40000>;
++				read-only;
++			};
++
++			partition@140000 {
++				label = "0:BOOTCONFIG1";
++				reg = <0x140000 0x40000>;
++				read-only;
++			};
++
++			partition@180000 {
++				label = "0:QSEE";
++				reg = <0x180000 0x100000>;
++				read-only;
++			};
++
++			partition@280000 {
++				label = "0:DEVCFG";
++				reg = <0x280000 0x40000>;
++				read-only;
++			};
++
++			partition@2c0000 {
++				label = "0:CDT";
++				reg = <0x2c0000 0x40000>;
++				read-only;
++			};
++
++			partition@300000 {
++				label = "0:APPSBLENV";
++				reg = <0x300000 0x80000>;
++			};
++
++			partition@380000 {
++				label = "0:APPSBL";
++				reg = <0x380000 0x140000>;
++				read-only;
++			};
++
++			partition@4c0000 {
++				label = "0:ART";
++				reg = <0x4c0000 0x100000>;
++				read-only;
++			};
++
++			partition@5c0000 {
++				label = "0:TRAINING";
++				reg = <0x5c0000 0x80000>;
++				read-only;
++			};
++
++			partition@640000 {
++				label = "rootfs";
++				reg = <0x640000 0x2a00000>;
++			};
++
++			partition@3040000 {
++				label = "rootfs_1";
++				reg = <0x3040000 0x2a00000>;
++			};
++
++			partition@5a40000 {
++				label = "tp_data";
++				reg = <0x5a40000 0x840000>;
++				read-only;
++			};
++
++			partition@6280000 {
++				label = "radio";
++				reg = <0x6280000 0x440000>;
++				read-only;
++			};
++
++			partition@66c0000 {
++				label = "data";
++				reg = <0x66c0000 0x80000>;
++			};
++		};
++	};
++};
++
++/*
++ * ===========================================================================
++ * Ethernet (kernel 6.12 DWMAC + DSA, all verified on hardware 2026-07-06).
++ *
++ *   IPQ5018 gmac1 -> uniphy0 PCS -> 2.5G HSGMII trunk -> RTL8367S DSA switch
++ *   All FIVE front jacks are RTL8367S internal PHYs:
++ *     blue WAN = phy0 ("wan"), LAN1-4 = phy1-4 ("lan1".."lan4")
++ *   The SoC's internal GE PHY (mdio0:7/gmac0) is NOT bonded out -> disabled.
++ *
++ *   RTL8367S: MDIO addr 29 on mdio1, reset GPIO 33 (the OEM DTS's "GPIO39"
++ *   is wrong/unused). Requires the rtl8365mb SGMII/HSGMII patch (0918);
++ *   no 8051 SerDes firmware needed. Stock runs the trunk at 1G SGMII; 2.5G HSGMII
++ *   verified working with this driver.
++ * ===========================================================================
++ */
++
++/*
++ * The IPQ5018 internal GE PHY (mdio0 addr 7 / gmac0) is NOT wired to any
++ * jack on this board: all five front jacks (blue "WAN" + LAN1-4) hang off
++ * the RTL8367S's five internal PHYs (verified per-jack on hardware, see
++ * the switch ports below). Keep gmac0 disabled.
++ */
++&gmac0 {
++	status = "disabled";
++};
++
++&mdio0 {
++	status = "okay";
++};
++
++/* LAN trunk PCS */
++&uniphy0 {
++	status = "okay";
++};
++
++&gmac1 {
++	status = "okay";
++
++	phy-mode = "2500base-x";
++
++	fixed-link {
++		speed = <2500>;
++		full-duplex;
++	};
++};
++
++&mdio1 {
++	status = "okay";
++
++	pinctrl-0 = <&mdio1_pins>;
++	pinctrl-names = "default";
++	reset-gpios = <&tlmm 33 GPIO_ACTIVE_LOW>;
++
++	/*
++	 * RTL8367S (OEM labels it "qca83xx"). MDIO-connected (realtek-mdio).
++	 * reg = 29: confirmed correct (Angel666 working port + forum). The
++	 * switch RESET is GPIO33 (Angel666 "switch = <&tlmm 33 0>" + Sunshainy),
++	 * NOT the OEM-labelled GPIO39 - using 39 left the chip in reset and MDIO
++	 * read back 0xffff ("unrecognized switch").
++	 */
++	switch@29 {
++		compatible = "realtek,rtl8365mb";
++		reg = <29>;
++
++		/*
++		 * The RTL8367S internal user-side MDIO bus. The DSA realtek
++		 * driver (rtl83xx_setup_user_mdio) requires this child node -
++		 * without it probe fails with "no MDIO bus node". LAN1-4 hang
++		 * off the switch's internal PHYs 0-3.
++		 */
++		mdio {
++			compatible = "realtek,smi-mdio";
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			switchphy0: ethernet-phy@0 {
++				reg = <0>;
++			};
++
++			switchphy1: ethernet-phy@1 {
++				reg = <1>;
++			};
++
++			switchphy2: ethernet-phy@2 {
++				reg = <2>;
++			};
++
++			switchphy3: ethernet-phy@3 {
++				reg = <3>;
++			};
++
++			switchphy4: ethernet-phy@4 {
++				reg = <4>;
++			};
++		};
++
++		ports {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			/*
++			 * Physical jack -> switch PHY map (verified per-jack):
++			 * blue WAN = phy0, LAN1 = phy1, LAN2 = phy2,
++			 * LAN3 = phy3, LAN4 = phy4. The SoC's internal GE PHY
++			 * is not bonded out.
++			 */
++			port@0 {
++				reg = <0>;
++				label = "wan";
++				phy-handle = <&switchphy0>;
++			};
++
++			port@1 {
++				reg = <1>;
++				label = "lan1";
++				phy-handle = <&switchphy1>;
++			};
++
++			port@2 {
++				reg = <2>;
++				label = "lan2";
++				phy-handle = <&switchphy2>;
++			};
++
++			port@3 {
++				reg = <3>;
++				label = "lan3";
++				phy-handle = <&switchphy3>;
++			};
++
++			port@4 {
++				reg = <4>;
++				label = "lan4";
++				phy-handle = <&switchphy4>;
++			};
++
++			port@6 {
++				reg = <6>;
++				label = "cpu";
++				ethernet = <&gmac1>;
++				phy-mode = "2500base-x";
++
++				fixed-link {
++					speed = <2500>;
++					full-duplex;
++				};
++			};
++		};
++	};
++};
++
++&usbphy0 {
++	status = "okay";
++};
++
++&soc {
++	/*
++	 * SuperSpeed "uni" PHY (no node in the mainline dtsi - mainline has
++	 * no driver; ours is patch 0922, ported from the QSDK). Layout as in
++	 * the stock DTB ssuniphy@5d000, por_rst = GCC_USB0_PHY_BCR - but on
++	 * top of the vendor's pipe+cfg_ahb the driver also needs aux+lfps:
++	 * with either gated, the 0x5d000 register file hangs the bus (the
++	 * vendor controller node enables them before its phy init).
++	 */
++	ssphy: phy@5d000 {
++		compatible = "qcom,ipq5018-usb-ssphy";
++		reg = <0x0005d000 0x800>;
++
++		clocks = <&gcc GCC_USB0_PIPE_CLK>,
++			 <&gcc GCC_USB0_PHY_CFG_AHB_CLK>,
++			 <&gcc GCC_USB0_AUX_CLK>,
++			 <&gcc GCC_USB0_LFPS_CLK>;
++		clock-names = "pipe",
++			      "cfg_ahb",
++			      "aux",
++			      "lfps";
++
++		resets = <&gcc GCC_USB0_PHY_BCR>;
++
++		#phy-cells = <0>;
++	};
++};
++
++&usb {
++	status = "okay";
++
++	vbus-supply = <&reg_usb_vbus>;
++
++	/*
++	 * The USB pads are behind a TCSR-controlled phy mux (stock DTB:
++	 * qcom,phy-mux-regs = <syscon@1945000 0x2540>). The same register
++	 * inside the mainline tcsr node (0x1937000) is at offset 0x10540.
++	 * TP-Link's U-Boot never selects the USB position - patch 0921
++	 * writes 1 here at probe.
++	 */
++	qcom,phy-mux-regs = <&tcsr 0x10540>;
++
++	/*
++	 * TP-Link's U-Boot leaves the mock UTMI RCG at 120 MHz; the stock
++	 * DTB assigns the UTMI-spec 60 MHz. Without it the HS side never
++	 * detects a connect.
++	 */
++	assigned-clocks = <&gcc GCC_USB0_MOCK_UTMI_CLK>;
++	assigned-clock-rates = <60000000>;
++
++	/*
++	 * The dtsi is written for HS-only operation (no SS phy driver in
++	 * mainline): it substitutes the UTMI clock for the controller's
++	 * PIPE interface. With the real SS phy up this must go away - the
++	 * combination of a live SS phy and the UTMI substitution hangs the
++	 * controller (verified live: the system dies within minutes even
++	 * with no SS device plugged).
++	 */
++	/delete-property/ qcom,select-utmi-as-pipe-clk;
++};
++
++&usb_dwc {
++	#address-cells = <1>;
++	#size-cells = <0>;
++	dr_mode = "host";
++
++	phys = <&usbphy0>, <&ssphy>;
++	phy-names = "usb2-phy", "usb3-phy";
++
++	usb_port1: port@1 {
++		reg = <1>;
++		#trigger-source-cells = <0>;
++	};
++};
++
++/*
++ * ===========================================================================
++ * Stage 3d - WiFi (IPQ5018 2.4 GHz + QCN6122/QCN6102 5 GHz).
++ * GL-B3000 style: 5 GHz radio on UPD ID 3 (q6_wcss_pd3), no boot-args,
++ * so the (board-specific, unexposed) QCN6122 reset GPIO is not needed.
++ * Per-device pre-cal is pulled from 0:ART by the 11-ath11k-caldata hotplug.
++ * ===========================================================================
++ */
++&q6v5_wcss {
++	status = "okay";
++};
++
++&wifi {
++	status = "okay";
++
++	qcom,rproc = <&q6_wcss_pd1>;
++	qcom,userpd-subsys-name = "q6v5_wcss_userpd1";
++	qcom,ath11k-fw-memory-mode = <1>;
++	qcom,ath11k-calibration-variant = "TP-Link-Archer-AX55-v1";
++	qcom,bdf-addr = <0x4c400000>;
++};
++
++&wifi1 {
++	status = "okay";
++
++	qcom,rproc = <&q6_wcss_pd3>;
++	qcom,userpd-subsys-name = "q6v5_wcss_userpd3";
++	qcom,ath11k-fw-memory-mode = <1>;
++	qcom,ath11k-calibration-variant = "TP-Link-Archer-AX55-v1";
++	qcom,bdf-addr = <0x4d100000>;
++	qcom,m3-dump-addr = <0x4df00000>;
++};
++
++&tlmm {
++	button_pins: button-state {
++		pins = "gpio25", "gpio31";
++		function = "gpio";
++		drive-strength = <8>;
++		bias-pull-up;
++	};
++
++	led_pins: led-state {
++		pins = "gpio10", "gpio11", "gpio13", "gpio18", "gpio22",
++		       "gpio38";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-disable;
++	};
++
++	mdio1_pins: mdio1-state {
++		mdc-pins {
++			pins = "gpio36";
++			function = "mdc";
++			drive-strength = <8>;
++			bias-pull-up;
++		};
++
++		mdio-pins {
++			pins = "gpio37";
++			function = "mdio";
++			drive-strength = <8>;
++			bias-pull-up;
++		};
++	};
++
++	qpic_pins: qpic-state {
++		clock-pins {
++			pins = "gpio9";
++			function = "qspi_clk";
++			drive-strength = <8>;
++			bias-disable;
++		};
++
++		cs-pins {
++			pins = "gpio8";
++			function = "qspi_cs";
++			drive-strength = <8>;
++			bias-disable;
++		};
++
++		data-pins {
++			pins = "gpio4", "gpio5", "gpio6", "gpio7";
++			function = "qspi_data";
++			drive-strength = <8>;
++			bias-disable;
++		};
++	};
++
++	serial_0_pins: uart0-state {
++		pins = "gpio20", "gpio21";
++		function = "blsp0_uart0";
++		bias-disable;
++	};
++};
+diff --git a/target/linux/qualcommax/files/drivers/net/ethernet/stmicro/stmmac/dwmac-ipq5018.c b/target/linux/qualcommax/files/drivers/net/ethernet/stmicro/stmmac/dwmac-ipq5018.c
+new file mode 100644
+index 0000000000..78f22e1c8b
+--- /dev/null
++++ b/target/linux/qualcommax/files/drivers/net/ethernet/stmicro/stmmac/dwmac-ipq5018.c
+@@ -0,0 +1,199 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Qualcomm IPQ5018 DWMAC glue layer
++ *
++ * Copyright (C) 2026 The OpenWrt Project
++ */
++
++#include <linux/clk.h>
++#include <linux/of_mdio.h>
++#include <linux/pcs/pcs.h>
++#include <linux/phy/phy.h>
++#include <linux/platform_device.h>
++#include <linux/reset.h>
++#include <linux/stmmac.h>
++
++#include "stmmac_platform.h"
++
++#define MAX_FRAME_SIZE	16383	/* 14 bits */
++/* MAX_MTU = (MAX_FRAME_SIZE - ETH_HLEN - ETH_FCS_LEN - (2 * VLAN_HLEN)) */
++#define MAX_MTU		16357
++
++static struct clk_bulk_data ipq5018_gmac_clks[] = {
++	{ .id = "stmmaceth" },
++	{ .id = "pclk" },
++	{ .id = "ptp_ref" },
++	{ .id = "ahb" },
++	{ .id = "axi" },
++	{ .id = "rx" },
++	{ .id = "tx" },
++};
++
++struct ipq5018_gmac {
++	struct device *dev;
++	struct clk *rx_clk;
++	struct clk *tx_clk;
++};
++
++static void ipq5018_gmac_fix_speed(void *priv, unsigned int speed, unsigned int mode)
++{
++	struct ipq5018_gmac *gmac = priv;
++	unsigned long rate;
++
++	switch(speed) {
++		case SPEED_10:
++			rate = 2500000;
++			break;
++		case SPEED_100:
++			rate = 25000000;
++			break;
++		case SPEED_1000:
++			rate = 125000000;
++			break;
++		case SPEED_2500:
++			rate = 312500000;
++			break;
++		default:
++			dev_err(gmac->dev, "Unsupported speed: %d\n", speed);
++			rate = 125000000;
++			break;
++	}
++
++	clk_set_rate(gmac->rx_clk, rate);
++	clk_set_rate(gmac->tx_clk, rate);
++}
++
++static int ipq5018_gmac_pcs_init(struct stmmac_priv *priv)
++{
++	struct phylink_pcs *pcs;
++	int ret;
++
++	pcs = fwnode_pcs_get(dev_fwnode(priv->device), 0);
++	if (!pcs)
++		return 0;
++	else if (IS_ERR(pcs)) {
++		ret = PTR_ERR(pcs);
++		if (ret == -ENOENT)
++			return 0;
++		dev_err(priv->device, "failed to parse PCS from fwnode\n");
++		return ret;
++	}
++
++	priv->hw->phylink_pcs = pcs;
++
++	return 0;
++}
++
++static struct phylink_pcs *ipq5018_gmac_select_pcs(struct stmmac_priv *priv,
++						   phy_interface_t interface)
++{
++	switch (interface) {
++	case PHY_INTERFACE_MODE_SGMII:
++	case PHY_INTERFACE_MODE_2500BASEX:
++		if (priv->hw->phylink_pcs)
++			return priv->hw->phylink_pcs;
++	default:
++		break;
++	}
++
++	return NULL;
++}
++
++static void ipq5018_gmac_get_interfaces(struct stmmac_priv *priv, void *bsp_priv,
++				    unsigned long *interfaces)
++{
++	struct mac_device_info *mac = priv->hw;
++
++	/*
++	 * IPQ5018 has two GMACs:
++	 * - GMAC0 supports SGMII and is wired to the SoC's internal GE PHY
++	 * - GMAC1 supports SGMII and 2500BaseX, configurable by the UNIPHY PCS
++	 */
++	__set_bit(PHY_INTERFACE_MODE_SGMII, interfaces);
++	if (priv->hw->phylink_pcs) {
++		__set_bit(PHY_INTERFACE_MODE_2500BASEX, interfaces);
++
++		/* 
++		 * Synopsys DWMAC IP version 3.7 is limited to 1 Gpbs.
++		 * This vendor specific implementation supports 2.5 Gbps, so override
++	 	 * the default mac link capabilities.
++	 	 */
++		mac->link.caps |= MAC_2500FD;
++	}
++}
++
++static int ipq5018_gmac_probe(struct platform_device *pdev)
++{
++	struct plat_stmmacenet_data *plat_dat;
++	struct stmmac_resources stmmac_res;
++	struct device *dev = &pdev->dev;
++	struct ipq5018_gmac *gmac;
++	int ret;
++
++	ret = stmmac_get_platform_resources(pdev, &stmmac_res);
++	if (ret)
++		return dev_err_probe(dev, ret,
++				     "failed to get stmmac platform resources\n");
++
++	plat_dat = devm_stmmac_probe_config_dt(pdev, stmmac_res.mac);
++	if (IS_ERR_OR_NULL(plat_dat))
++		return dev_err_probe(dev, PTR_ERR(plat_dat),
++				     "failed to parse stmmac dt parameters\n");
++
++	gmac = devm_kzalloc(dev, sizeof(*gmac), GFP_KERNEL);
++	if (!gmac)
++		return dev_err_probe(dev, -ENOMEM,
++				     "failed to allocate priv\n");
++
++	gmac->dev = dev;
++
++	gmac->rx_clk = devm_clk_get(dev, "rx");
++	if (IS_ERR(gmac->rx_clk))
++		return dev_err_probe(dev, PTR_ERR(gmac->rx_clk),
++				     "failed to get RX clock\n");
++
++	gmac->tx_clk = devm_clk_get(dev, "tx");
++	if (IS_ERR(gmac->tx_clk))
++		return dev_err_probe(dev, PTR_ERR(gmac->tx_clk),
++				     "failed to get TX clock\n");
++	
++	ret = devm_clk_bulk_get(dev, ARRAY_SIZE(ipq5018_gmac_clks),
++				ipq5018_gmac_clks);
++	if (ret)
++		return dev_err_probe(dev, ret, "failed to get clocks\n");
++
++	ret = clk_bulk_prepare_enable(ARRAY_SIZE(ipq5018_gmac_clks),
++						 ipq5018_gmac_clks);
++	if (ret)
++		return dev_err_probe(dev, ret, "failed to enable clocks\n");
++
++	plat_dat->bsp_priv = gmac;
++	plat_dat->max_speed = 2500;
++	plat_dat->maxmtu = MAX_MTU;
++	plat_dat->rx_fifo_size = MAX_FRAME_SIZE;
++	plat_dat->tx_fifo_size = MAX_FRAME_SIZE;
++	plat_dat->get_interfaces = ipq5018_gmac_get_interfaces;
++	plat_dat->fix_mac_speed = ipq5018_gmac_fix_speed;
++	plat_dat->pcs_init = ipq5018_gmac_pcs_init;
++	plat_dat->select_pcs = ipq5018_gmac_select_pcs;
++
++	return stmmac_dvr_probe(dev, plat_dat, &stmmac_res);
++}
++
++static const struct of_device_id ipq5018_gmac_dwmac_match[] = {
++	{ .compatible = "qcom,ipq5018-gmac" },
++	{ }
++};
++MODULE_DEVICE_TABLE(of, ipq5018_gmac_dwmac_match);
++
++static struct platform_driver ipq5018_gmac_dwmac_driver = {
++	.probe = ipq5018_gmac_probe,
++	.driver = {
++		.name		= "ipq5018-gmac-dwmac",
++		.of_match_table	= ipq5018_gmac_dwmac_match,
++	},
++};
++module_platform_driver(ipq5018_gmac_dwmac_driver);
++
++MODULE_DESCRIPTION("Qualcomm IPQ5018 DWMAC glue layer");
++MODULE_LICENSE("GPL");
+\ No newline at end of file
+diff --git a/target/linux/qualcommax/files/drivers/net/pcs/pcs-qca-uniphy.c b/target/linux/qualcommax/files/drivers/net/pcs/pcs-qca-uniphy.c
+new file mode 100644
+index 0000000000..f3e3fd7347
+--- /dev/null
++++ b/target/linux/qualcommax/files/drivers/net/pcs/pcs-qca-uniphy.c
+@@ -0,0 +1,1023 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Qualcomm IPQ6018 UNIPHY PCS driver
++ *
++ * Copyright (c) 2025 The OpenWrt Project
++ *
++ * Standalone PCS driver for the UNIPHY SerDes blocks in IPQ6018 SoCs.
++ * Each UNIPHY instance provides up to 5 SGMII channels (PSGMII mode)
++ * or a single channel for SGMII/USXGMII.
++ */
++
++#include <linux/bitfield.h>
++#include <linux/clk/clk-conf.h>
++#include <linux/clk-provider.h>
++#include <linux/delay.h>
++#include <linux/device.h>
++#include <linux/iopoll.h>
++#include <linux/module.h>
++#include <linux/of.h>
++#include <linux/of_platform.h>
++#include <linux/pcs/pcs-provider.h>
++#include <linux/pcs/pcs-qca-uniphy.h>
++#include <linux/phylink.h>
++#include <linux/platform_device.h>
++#include <linux/regmap.h>
++
++#include <dt-bindings/net/qca-uniphy.h>
++
++static const struct qca_uniphy_match_data ipq5018_data = {
++	.uniphy_type	= UNIPHY_IPQ5018,
++	.ref_clk_enable	= true,
++};
++
++static const struct qca_uniphy_match_data ipq6018_data = {
++	.uniphy_type	= UNIPHY_IPQ6018,
++	.ref_clk_enable	= false,
++};
++
++static const struct qca_uniphy_match_data ipq8074_data = {
++	.uniphy_type	= UNIPHY_IPQ8074,
++	.ref_clk_enable	= false,
++};
++
++static unsigned long
++qca_uniphy_clk_recalc_rate(struct clk_hw *hw, unsigned long parent_rate)
++{
++	struct qca_uniphy_clk *uclk =
++		container_of(hw, struct qca_uniphy_clk, hw);
++	struct qca_uniphy *uniphy = uclk->uniphy;
++	u32 val;
++
++	/*
++	 * UNIPHY switch reference clock based on the configured
++	 * PHY mode.
++	 */
++	regmap_read(uniphy->regmap, UNIPHY_MODE_CTRL, &val);
++	if (val & UNIPHY_SGMII_MODE ||
++	    val & UNIPHY_CH0_PSGMII_QSGMII ||
++	    val & UNIPHY_CH0_QSGMII_SGMII)
++		return 125000000;
++	else if (val & UNIPHY_SGPLUS_MODE ||
++		 val & UNIPHY_XPCS_MODE)
++		return 312500000;
++
++	return 0;
++}
++
++static const struct clk_ops qca_uniphy_clk_ops = {
++	.recalc_rate = qca_uniphy_clk_recalc_rate,
++};
++
++static int qca_uniphy_clk_register(struct qca_uniphy *uniphy,
++				   struct qca_uniphy_clk *uclk,
++				   const char *name)
++{
++	struct clk_init_data init = {
++		.name = name,
++		.ops = &qca_uniphy_clk_ops,
++		/* always derive rate from the UNIPHY register */
++		.flags = CLK_GET_RATE_NOCACHE,
++	};
++
++	uclk->hw.init = &init;
++	uclk->uniphy = uniphy;
++
++	return devm_clk_hw_register(uniphy->dev, &uclk->hw);
++}
++
++static int
++qca_uniphy_refclk_enable(struct clk_hw *hw)
++{
++	struct qca_uniphy_clk *uclk =
++		container_of(hw, struct qca_uniphy_clk, hw);
++	struct qca_uniphy *uniphy = uclk->uniphy;
++
++	switch (uniphy->data->uniphy_type) {
++	case UNIPHY_IPQ5018:
++		if (!clk_hw_is_enabled(&uclk->hw)) {
++			regmap_update_bits(uniphy->regmap, IPQ5018_UNIPHY_REFCLK,
++					IPQ5018_UNIPHY_REFCLK_EN |
++					IPQ5018_UNIPHY_REFCLK_DS,
++					IPQ5018_UNIPHY_REFCLK_EN |
++					FIELD_PREP(IPQ5018_UNIPHY_REFCLK_DS, 1));
++		}
++		break;
++	default:
++		break;
++	}
++
++	return 0;
++}
++
++static int
++qca_uniphy_refclk_is_enabled(struct clk_hw *hw)
++{
++	struct qca_uniphy_clk *uclk =
++		container_of(hw, struct qca_uniphy_clk, hw);
++	struct qca_uniphy *uniphy = uclk->uniphy;
++	u32 val;
++
++	switch (uniphy->data->uniphy_type) {
++	case UNIPHY_IPQ5018:
++		regmap_read(uniphy->regmap, IPQ5018_UNIPHY_REFCLK, &val);
++		return !!(val & IPQ5018_UNIPHY_REFCLK_EN);
++	default:
++		break;
++	}
++
++	return 0;
++}
++
++static int
++qca_uniphy_refclk_determine_rate(struct clk_hw *hw,
++				 struct clk_rate_request *req)
++{
++	struct qca_uniphy_clk *uclk =
++		container_of(hw, struct qca_uniphy_clk, hw);
++	struct qca_uniphy *uniphy = uclk->uniphy;
++
++	switch (uniphy->data->uniphy_type) {
++	case UNIPHY_IPQ5018:
++		switch (req->rate) {
++		case UNIPHY_REFCLK_25MHZ:
++		case UNIPHY_REFCLK_50MHZ:
++			return 0;
++		default:
++			return -EINVAL;
++		}
++	default:
++		return 0;
++	}
++}
++
++static unsigned long
++qca_uniphy_refclk_recalc_rate(struct clk_hw *hw, unsigned long parent_rate)
++{
++	struct qca_uniphy_clk *uclk =
++		container_of(hw, struct qca_uniphy_clk, hw);
++	struct qca_uniphy *uniphy = uclk->uniphy;
++	u32 val;
++
++	switch (uniphy->data->uniphy_type) {
++	case UNIPHY_IPQ5018:
++		regmap_read(uniphy->regmap, IPQ5018_UNIPHY_REFCLK, &val);
++		if (val & IPQ5018_UNIPHY_REFCLK_DIV)
++			return UNIPHY_REFCLK_25MHZ;
++		else
++			return UNIPHY_REFCLK_50MHZ;
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	return 0;
++}
++
++static int
++qca_uniphy_refclk_set_rate(struct clk_hw *hw, unsigned long rate,
++			   unsigned long parent_rate)
++{
++	struct qca_uniphy_clk *refclk =
++		container_of(hw, struct qca_uniphy_clk, hw);
++	struct qca_uniphy *uniphy = refclk->uniphy;
++	u32 val = 0;
++
++	switch (uniphy->data->uniphy_type) {
++	case UNIPHY_IPQ5018:
++		if (parent_rate != UNIPHY_REFCLK_50MHZ)
++			return -EINVAL;
++
++		if (rate == UNIPHY_REFCLK_50MHZ)
++			val = FIELD_PREP(IPQ5018_UNIPHY_REFCLK_DIV, 0x0);
++		else if (rate == UNIPHY_REFCLK_25MHZ)
++			val = FIELD_PREP(IPQ5018_UNIPHY_REFCLK_DIV, 0x1);
++
++		regmap_update_bits(uniphy->regmap, IPQ5018_UNIPHY_REFCLK,
++				   IPQ5018_UNIPHY_REFCLK_DIV, val);
++		break;
++	default:
++		return 0;
++	}
++
++	return 0;
++}
++
++static const struct clk_ops qca_uniphy_refclk_ops = {
++	.enable = qca_uniphy_refclk_enable,
++	.determine_rate = qca_uniphy_refclk_determine_rate,
++	.recalc_rate = qca_uniphy_refclk_recalc_rate,
++	.set_rate = qca_uniphy_refclk_set_rate,
++};
++
++static int qca_uniphy_refclk_register(struct qca_uniphy *uniphy,
++				      const char *name) {
++	struct clk_parent_data pdata = { .fw_name = "ref" };
++	struct clk_init_data init = {};
++
++	init.name = name,
++	init.parent_data = &pdata;
++	init.num_parents = 1;
++	init.ops = &qca_uniphy_refclk_ops,
++	/* always derive rate from the UNIPHY register */
++	init.flags = CLK_GET_RATE_NOCACHE,
++
++	uniphy->ref_clk.hw.init = &init;
++	uniphy->ref_clk.uniphy = uniphy;
++
++	return devm_clk_hw_register(uniphy->dev, &uniphy->ref_clk.hw);
++}
++
++static int qca_uniphy_register_clks(struct qca_uniphy *uniphy) {
++	struct clk_hw_onecell_data *hw_data;
++	struct device *dev = uniphy->dev;
++	const char *name;
++	int num_clks;
++	int ret;
++
++	num_clks = (uniphy->data->ref_clk_enable) ? 3 : 2;
++	hw_data = devm_kzalloc(dev, struct_size(hw_data, hws, num_clks),
++			       GFP_KERNEL);
++	if (!hw_data)
++		return -ENOMEM;
++
++	if (of_property_read_string_index(dev->of_node, "clock-output-names",
++					  UNIPHY_CLK_RX, &name))
++		return -ENODEV;
++
++	ret = qca_uniphy_clk_register(uniphy, &uniphy->rx_clk, name);
++	if (ret)
++		return ret;
++	hw_data->hws[UNIPHY_CLK_RX] = &uniphy->rx_clk.hw;
++
++	if (of_property_read_string_index(dev->of_node, "clock-output-names",
++					  UNIPHY_CLK_TX, &name))
++		return -ENODEV;
++
++	ret = qca_uniphy_clk_register(uniphy, &uniphy->tx_clk, name);
++	if (ret)
++		return ret;
++	hw_data->hws[UNIPHY_CLK_TX] = &uniphy->tx_clk.hw;
++
++	if (uniphy->data->ref_clk_enable) {
++		if (of_property_read_string_index(dev->of_node,
++						  "clock-output-names",
++						  UNIPHY_CLK_REF, &name))
++			return -ENODEV;
++
++		ret = qca_uniphy_refclk_register(uniphy, name);
++		if (ret)
++			return ret;
++		hw_data->hws[UNIPHY_CLK_REF] = &uniphy->ref_clk.hw;
++	}
++
++	hw_data->num = num_clks;
++
++	return devm_of_clk_add_hw_provider(dev, of_clk_hw_onecell_get, hw_data);
++}
++
++static unsigned int
++qca_uniphy_pcs_inband_caps(struct phylink_pcs *pcs,
++			   phy_interface_t interface)
++{
++	return LINK_INBAND_DISABLE | LINK_INBAND_ENABLE;
++}
++
++static void qca_uniphy_pcs_get_state_sgmii(struct qca_uniphy *uniphy,
++					   int channel,
++					   struct phylink_link_state *state)
++{
++	u32 val;
++
++	regmap_read(uniphy->regmap,
++		    UNIPHY_CH_STS(channel),
++		    &val);
++
++	state->link = !!(val & UNIPHY_CH_STS_LINK);
++	if (!state->link)
++		return;
++
++	state->duplex = (val & UNIPHY_CH_STS_DUPLEX) ? DUPLEX_FULL : DUPLEX_HALF;
++
++	switch (FIELD_GET(UNIPHY_CH_STS_SPEED_MODE, val)) {
++	case 0:
++		state->speed = SPEED_10;
++		break;
++	case 1:
++		state->speed = SPEED_100;
++		break;
++	case 2:
++		state->speed = SPEED_1000;
++		break;
++	default:
++		state->link = false;
++		return;
++	}
++
++	state->pause = 0;
++	if (val & UNIPHY_CH_STS_RX_PAUSE)
++		state->pause |= MLO_PAUSE_RX;
++	if (val & UNIPHY_CH_STS_TX_PAUSE)
++		state->pause |= MLO_PAUSE_TX;
++
++	state->an_complete = state->link;
++}
++
++static void qca_uniphy_pcs_get_state_hsgmii(struct qca_uniphy *uniphy,
++					    int channel,
++					    struct phylink_link_state *state)
++{
++	u32 val;
++
++	regmap_read(uniphy->regmap,
++		    UNIPHY_CH_STS(channel),
++		    &val);
++
++	state->link = !!(val & UNIPHY_CH_STS_LINK);
++	if (!state->link)
++		return;
++
++	state->speed = SPEED_2500;
++	state->duplex = DUPLEX_FULL;
++
++	state->pause = 0;
++	if (val & UNIPHY_CH_STS_RX_PAUSE)
++		state->pause |= MLO_PAUSE_RX;
++	if (val & UNIPHY_CH_STS_TX_PAUSE)
++		state->pause |= MLO_PAUSE_TX;
++
++	state->an_complete = state->link;
++}
++
++static void qca_uniphy_pcs_get_state_usxgmii(struct qca_uniphy *uniphy,
++					     struct phylink_link_state *state)
++{
++	unsigned int val;
++	int ret;
++
++	ret = regmap_read(uniphy->regmap, XPCS_MII_AN_INTR_STS, &val);
++	if (ret) {
++		state->link = 0;
++		return;
++	}
++
++	state->link = !!(val & XPCS_USXG_AN_LINK_STS);
++
++	if (!state->link)
++		return;
++
++	switch (FIELD_GET(XPCS_USXG_AN_SPEED_MASK, val)) {
++	case XPCS_USXG_AN_SPEED_10000:
++		state->speed = SPEED_10000;
++		break;
++	case XPCS_USXG_AN_SPEED_5000:
++		state->speed = SPEED_5000;
++		break;
++	case XPCS_USXG_AN_SPEED_2500:
++		state->speed = SPEED_2500;
++		break;
++	case XPCS_USXG_AN_SPEED_1000:
++		state->speed = SPEED_1000;
++		break;
++	case XPCS_USXG_AN_SPEED_100:
++		state->speed = SPEED_100;
++		break;
++	case XPCS_USXG_AN_SPEED_10:
++		state->speed = SPEED_10;
++		break;
++	default:
++		state->link = false;
++		return;
++	}
++
++	state->duplex = DUPLEX_FULL;
++}
++
++static void qca_uniphy_pcs_get_state_10base_r(struct qca_uniphy *uniphy,
++					      struct phylink_link_state *state)
++{
++	unsigned int val;
++	int ret;
++
++	ret = regmap_read(uniphy->regmap, XPCS_KR_STS1, &val);
++	if (ret) {
++		state->link = 0;
++		return;
++	}
++
++	state->link = !!(val & XPCS_KR_STS1_PLU);
++
++	if (!state->link)
++		return;
++
++	state->speed = SPEED_10000;
++	state->duplex = DUPLEX_FULL;
++}
++
++static void qca_uniphy_pcs_get_state(struct phylink_pcs *pcs,
++				     struct phylink_link_state *state)
++{
++	struct qca_uniphy_pcs *upcs = to_qca_uniphy_pcs(pcs);
++	struct qca_uniphy *uniphy = upcs->uniphy;
++
++	switch (state->interface) {
++	case PHY_INTERFACE_MODE_SGMII:
++	case PHY_INTERFACE_MODE_QSGMII:
++	case PHY_INTERFACE_MODE_PSGMII:
++	case PHY_INTERFACE_MODE_1000BASEX:
++		qca_uniphy_pcs_get_state_sgmii(uniphy, upcs->channel,
++					       state);
++		break;
++	case PHY_INTERFACE_MODE_2500BASEX:
++		qca_uniphy_pcs_get_state_hsgmii(uniphy, upcs->channel,
++						state);
++		break;
++	case PHY_INTERFACE_MODE_USXGMII:
++		qca_uniphy_pcs_get_state_usxgmii(uniphy, state);
++		break;
++	case PHY_INTERFACE_MODE_10GBASER:
++		qca_uniphy_pcs_get_state_10base_r(uniphy, state);
++		break;
++	default:
++		break;
++	}
++}
++
++static int qca_uniphy_pcs_config_mode(struct phylink_pcs *pcs,
++				      unsigned int neg_mode,
++				      phy_interface_t interface,
++				      const unsigned long *advertising,
++				      bool permit_pause_to_mac)
++{
++	struct qca_uniphy_pcs *upcs = to_qca_uniphy_pcs(pcs);
++	struct qca_uniphy *uniphy = upcs->uniphy;
++	u32 misc2_phy_mode, mode_ctrl, val;
++	int ret;
++
++	dev_dbg(uniphy->dev, "Configuring PCS: chan=%d, interface=%s, neg_mode=0x%x\n",
++		upcs->channel, phy_modes(interface), neg_mode);
++
++	switch (interface) {
++	case PHY_INTERFACE_MODE_1000BASEX:
++		misc2_phy_mode = UNIPHY_MISC2_SGMII;
++		mode_ctrl = UNIPHY_SGMII_MODE;
++		break;
++	case PHY_INTERFACE_MODE_SGMII:
++		misc2_phy_mode = UNIPHY_MISC2_SGMII;
++		mode_ctrl = UNIPHY_SGMII_MODE;
++		mode_ctrl |= FIELD_PREP(UNIPHY_CH0_MODE_CTRL_25M, UNIPHY_CH0_MODE_MAC);
++		mode_ctrl |= UNIPHY_AUTONEG_MODE_ATH;
++		break;
++	case PHY_INTERFACE_MODE_QSGMII:
++		mode_ctrl = UNIPHY_CH0_QSGMII_SGMII;
++		misc2_phy_mode = UNIPHY_MISC2_SGMII;
++		break;
++	case PHY_INTERFACE_MODE_PSGMII:
++		mode_ctrl = UNIPHY_CH0_PSGMII_QSGMII;
++		misc2_phy_mode = 0;
++		break;
++	case PHY_INTERFACE_MODE_USXGMII:
++		mode_ctrl = UNIPHY_XPCS_MODE;
++		misc2_phy_mode = UNIPHY_MISC2_USXGMII;
++		break;
++	case PHY_INTERFACE_MODE_10GBASER:
++		mode_ctrl = UNIPHY_XPCS_MODE;
++		misc2_phy_mode = 0;
++		break;
++	case PHY_INTERFACE_MODE_2500BASEX:
++		misc2_phy_mode = UNIPHY_MISC2_SGMIIPLUS;
++		mode_ctrl = UNIPHY_SGPLUS_MODE;
++		mode_ctrl |= FIELD_PREP(UNIPHY_CH0_MODE_CTRL_25M, UNIPHY_CH0_MODE_MAC);
++		mode_ctrl |= UNIPHY_AUTONEG_MODE_ATH;
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	/*
++	* The clock could have been enabled by the bootloader.
++	* Increase enable count (>0) CCF can properly account for clock state.
++	*/
++	if (uniphy->data->ref_clk_enable) {
++		if (!clk_hw_is_enabled(&uniphy->ref_clk.hw) &&
++		    qca_uniphy_refclk_is_enabled(&uniphy->ref_clk.hw))
++			clk_prepare_enable(uniphy->ref_clk.hw.clk);
++	}
++
++	/* TODO: Fix for IPQ6018 and IPQ8074 */
++	if (uniphy->data->uniphy_type == UNIPHY_IPQ5018) {
++		//set force mode for fixed link
++		if (neg_mode == PHYLINK_PCS_NEG_OUTBAND && !phylink_expects_phy(pcs->phylink)) {
++			regmap_set_bits(uniphy->regmap,
++					UNIPHY_CH_CTRL(upcs->channel),
++					UNIPHY_CH_FORCE_MODE);
++		}
++	}
++
++	/*
++	 * Everything below acts on the whole UNIPHY instance, not on the
++	 * calling channel: the analog PLL reset and the soft reset take
++	 * down every channel of the instance and calibration re-locks the
++	 * SerDes from scratch. On a multi-channel instance (PSGMII/QSGMII)
++	 * phylink calls pcs_config once per port, and re-running the
++	 * instance-wide reset for a later port tears down the channels
++	 * that already synced: the attached PHY's SerDes does not reliably
++	 * re-lock its lanes against a re-calibrated UNIPHY, leaving a port
++	 * with link up but a dead receive path. Configure the instance
++	 * once per interface mode - as the vendor driver does - and treat
++	 * further pcs_config calls for the same mode as channel-only.
++	 */
++	if (uniphy->interface == interface)
++		return 0;
++
++	/* First update misc2 PHY mode... */
++	regmap_update_bits(uniphy->regmap, UNIPHY_MISC2_PHY_MODE,
++			   UNIPHY_MISC2_PHY_MODE_MASK, misc2_phy_mode);
++
++	/* ...and reset Analog */
++	regmap_clear_bits(uniphy->regmap, UNIPHY_PLL_POWER_ON_AND_RESET,
++			  UNIPHY_PLL_RESET_ANALOG);
++	msleep(100);
++	regmap_set_bits(uniphy->regmap, UNIPHY_PLL_POWER_ON_AND_RESET,
++			UNIPHY_PLL_RESET_ANALOG);
++	msleep(100);
++
++	/* Second assert XPCS... */
++	if (uniphy->rst_xpcs)
++		reset_control_assert(uniphy->rst_xpcs);
++
++	/* ...and disable PHY clock */
++	clk_disable(uniphy->clks[port_rx_clk_idx(upcs)].clk);
++	clk_disable(uniphy->clks[port_tx_clk_idx(upcs)].clk);
++
++	/* Third update the mode ctrl... */
++	regmap_update_bits(uniphy->regmap, UNIPHY_MODE_CTRL,
++			   UNIPHY_MODE_SEL_MASK | UNIPHY_CH0_MODE_CTRL_25M |
++			   UNIPHY_AUTONEG_MODE_ATH,
++			   mode_ctrl);
++
++	/*
++	 * ...and execute soft reset...
++	 *
++	 * (soft reset is XPCS + all the UNIPHY PHY port reset,
++	 * XPCS gets indirectly deassert by the soft reset deassert.
++	 * It seems that resetting all at once is mandatory as from
++	 * lots of testing it has been verified that operating
++	 * on the single reset is problematic)
++	 */
++	reset_control_assert(uniphy->rst_soft);
++	msleep(100);
++	reset_control_deassert(uniphy->rst_soft);
++
++	/* ...and wait for calibration */
++	ret = regmap_read_poll_timeout(uniphy->regmap, UNIPHY_OFFSET_CALIB_4,
++				       val, val & UNIPHY_CALIBRATION_DONE,
++				       UNIPHY_CALIBRATION_POLL_US,
++				       UNIPHY_CALIBRATION_TIMEOUT_US);
++	if (ret) {
++		dev_err(uniphy->dev, "PCS calibration timeout\n");
++		return -EINVAL;
++	}
++
++	uniphy->interface = interface;
++
++	/* Trigger UNIPHY ref clock to recal rate */
++	clk_hw_recalc_rate(&uniphy->rx_clk.hw);
++	clk_hw_recalc_rate(&uniphy->tx_clk.hw);
++
++	/* As last step enable PHY clock... */
++	clk_enable(uniphy->clks[port_rx_clk_idx(upcs)].clk);
++	clk_enable(uniphy->clks[port_tx_clk_idx(upcs)].clk);
++
++	if (interface == PHY_INTERFACE_MODE_USXGMII ||
++	    interface == PHY_INTERFACE_MODE_10GBASER)
++		reset_control_deassert(uniphy->rst_xpcs);
++
++	if (!uniphy->data->ref_clk_enable)
++		return 0;
++
++	/* Trigger UNIPHY ref output clock to recalc rate */
++	clk_hw_recalc_rate(&uniphy->ref_clk.hw);
++	/* Trigger assigned-clock-rates in DT to be applied */
++	of_clk_set_defaults(uniphy->dev->of_node, true);
++	if (!qca_uniphy_refclk_is_enabled(&uniphy->ref_clk.hw))
++		qca_uniphy_refclk_enable(&uniphy->ref_clk.hw);
++
++	return 0;
++}
++
++static int qca_uniphy_pcs_config_usxgmii(struct phylink_pcs *pcs,
++					 unsigned int neg_mode,
++					 phy_interface_t interface,
++					 const unsigned long *advertising,
++					 bool permit_pause_to_mac)
++{
++	struct qca_uniphy_pcs *upcs = to_qca_uniphy_pcs(pcs);
++	struct qca_uniphy *uniphy = upcs->uniphy;
++	int ret;
++
++	ret = qca_uniphy_pcs_config_mode(pcs, neg_mode, interface, advertising, permit_pause_to_mac);
++	if (ret)
++		return ret;
++
++	ret = regmap_update_bits(uniphy->regmap, XPCS_DIG_CTRL,
++				 XPCS_USXG_EN,
++				 interface == PHY_INTERFACE_MODE_USXGMII ? XPCS_USXG_EN : 0);
++	if (ret)
++		return ret;
++
++	ret = regmap_update_bits(uniphy->regmap, XPCS_MII_AN_CTRL,
++				 XPCS_MII_AN_8BIT,
++				 interface == PHY_INTERFACE_MODE_USXGMII ? XPCS_MII_AN_8BIT : 0);
++	if (ret)
++		return ret;
++
++	return regmap_update_bits(uniphy->regmap, XPCS_MII_CTRL,
++				  XPCS_MII_AN_EN,
++				  interface == PHY_INTERFACE_MODE_USXGMII ? XPCS_MII_AN_EN : 0);
++}
++
++static int qca_uniphy_pcs_config(struct phylink_pcs *pcs,
++				 unsigned int neg_mode,
++				 phy_interface_t interface,
++				 const unsigned long *advertising,
++				 bool permit_pause_to_mac)
++{
++	switch (interface) {
++	case PHY_INTERFACE_MODE_SGMII:
++	case PHY_INTERFACE_MODE_QSGMII:
++	case PHY_INTERFACE_MODE_PSGMII:
++	case PHY_INTERFACE_MODE_1000BASEX:
++	case PHY_INTERFACE_MODE_2500BASEX:
++		return qca_uniphy_pcs_config_mode(pcs, neg_mode, interface, advertising, permit_pause_to_mac);
++	case PHY_INTERFACE_MODE_USXGMII:
++	case PHY_INTERFACE_MODE_10GBASER:
++		return qca_uniphy_pcs_config_usxgmii(pcs, neg_mode, interface, advertising, permit_pause_to_mac);
++	default:
++		return -EOPNOTSUPP;
++	}
++}
++
++static int uniphy_link_up_sgmii(struct phylink_pcs *pcs,
++				phy_interface_t interface,
++				int speed)
++{
++	struct qca_uniphy_pcs *upcs = to_qca_uniphy_pcs(pcs);
++	struct qca_uniphy *uniphy = upcs->uniphy;
++	unsigned long uniphy_rate;
++	int ret;
++
++	switch (interface) {
++	case PHY_INTERFACE_MODE_SGMII:
++	case PHY_INTERFACE_MODE_QSGMII:
++	case PHY_INTERFACE_MODE_PSGMII:
++		switch (speed) {
++		case SPEED_10:
++			uniphy_rate = 2500000;
++			break;
++		case SPEED_100:
++			uniphy_rate = 25000000;
++			break;
++		case SPEED_1000:
++			uniphy_rate = 125000000;
++			break;
++		default:
++			dev_err(uniphy->dev, "Invalid SGMII speed %d\n", speed);
++			return -EINVAL;
++		}
++		break;
++	case PHY_INTERFACE_MODE_1000BASEX:
++		switch (speed) {
++		case SPEED_1000:
++			uniphy_rate = 125000000;
++			break;
++		default:
++			dev_err(uniphy->dev, "Invalid 1000BaseX speed %d\n", speed);
++			return -EINVAL;
++		}
++		break;
++	case PHY_INTERFACE_MODE_2500BASEX:
++		switch (speed) {
++		case SPEED_2500:
++			uniphy_rate = 312500000;
++			break;
++		default:
++			dev_err(uniphy->dev, "Invalid 2500BaseX speed %d\n", speed);
++			return -EINVAL;
++		}
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	clk_set_rate(uniphy->clks[port_rx_clk_idx(upcs)].clk, uniphy_rate);
++	clk_set_rate(uniphy->clks[port_tx_clk_idx(upcs)].clk, uniphy_rate);
++
++	ret = regmap_clear_bits(uniphy->regmap, UNIPHY_CH_CTRL(upcs->channel),
++				UNIPHY_CH_ADP_SW_RSTN);
++	if (ret)
++		return ret;
++
++	usleep_range(1000, 2000);
++
++	return regmap_set_bits(uniphy->regmap, UNIPHY_CH_CTRL(upcs->channel),
++			       UNIPHY_CH_ADP_SW_RSTN);
++}
++
++static int uniphy_link_up_usxgmii(struct phylink_pcs *pcs, int speed)
++{
++	struct qca_uniphy_pcs *upcs = to_qca_uniphy_pcs(pcs);
++	struct qca_uniphy *uniphy = upcs->uniphy;
++	unsigned int val, uniphy_rate;
++	int ret;
++
++	switch (speed) {
++	case SPEED_10000:
++		val = XPCS_SPEED_10000;
++		uniphy_rate = 312500000;
++		break;
++	case SPEED_5000:
++		val = XPCS_SPEED_5000;
++		uniphy_rate = 156250000;
++		break;
++	case SPEED_2500:
++		val = XPCS_SPEED_2500;
++		uniphy_rate = 78125000;
++		break;
++	case SPEED_1000:
++		val = XPCS_SPEED_1000;
++		uniphy_rate = 125000000;
++		break;
++	case SPEED_100:
++		val = XPCS_SPEED_100;
++		uniphy_rate = 12500000;
++		break;
++	case SPEED_10:
++		val = XPCS_SPEED_10;
++		uniphy_rate = 1250000;
++		break;
++	default:
++		dev_err(uniphy->dev, "Invalid USXGMII speed %d\n", speed);
++		return -EINVAL;
++	}
++
++	clk_set_rate(uniphy->clks[port_rx_clk_idx(upcs)].clk, uniphy_rate);
++	clk_set_rate(uniphy->clks[port_tx_clk_idx(upcs)].clk, uniphy_rate);
++
++	/* Configure XPCS speed */
++	ret = regmap_update_bits(uniphy->regmap, XPCS_MII_CTRL,
++				 XPCS_SPEED_MASK, val | XPCS_DUPLEX_FULL);
++	if (ret)
++		return ret;
++
++	/* XPCS adapter reset */
++	return regmap_set_bits(uniphy->regmap, XPCS_DIG_CTRL, XPCS_USXG_ADPT_RESET);
++}
++
++static void qca_uniphy_pcs_link_up(struct phylink_pcs *pcs,
++				   unsigned int neg_mode,
++				   phy_interface_t interface,
++				   int speed, int duplex)
++{
++	struct qca_uniphy_pcs *upcs = to_qca_uniphy_pcs(pcs);
++	struct qca_uniphy *uniphy = upcs->uniphy;
++	int ret = 0;
++
++	switch (interface) {
++	case PHY_INTERFACE_MODE_SGMII:
++	case PHY_INTERFACE_MODE_QSGMII:
++	case PHY_INTERFACE_MODE_PSGMII:
++	case PHY_INTERFACE_MODE_1000BASEX:
++	case PHY_INTERFACE_MODE_2500BASEX:
++		ret = uniphy_link_up_sgmii(pcs, interface, speed);
++		break;
++	case PHY_INTERFACE_MODE_USXGMII:
++	case PHY_INTERFACE_MODE_10GBASER:
++		ret = uniphy_link_up_usxgmii(pcs, speed);
++		break;
++	default:
++		return;
++	}
++
++	if (ret)
++		dev_err(uniphy->dev, "PCS link up fail for interface %s\n",
++			phy_modes(interface));
++}
++
++static int qca_uniphy_pcs_validate(struct phylink_pcs *pcs, unsigned long *supported,
++			    const struct phylink_link_state *state)
++{
++	switch (state->interface) {
++	case PHY_INTERFACE_MODE_SGMII:
++	case PHY_INTERFACE_MODE_QSGMII:
++	case PHY_INTERFACE_MODE_PSGMII:
++	case PHY_INTERFACE_MODE_1000BASEX:
++	case PHY_INTERFACE_MODE_2500BASEX:
++	case PHY_INTERFACE_MODE_USXGMII:
++	case PHY_INTERFACE_MODE_10GBASER:
++		return 0;
++	default:
++		return -EINVAL;
++	}
++}
++
++static void qca_uniphy_pcs_disable(struct phylink_pcs *pcs)
++{
++	struct qca_uniphy_pcs *upcs = to_qca_uniphy_pcs(pcs);
++	struct qca_uniphy *uniphy = upcs->uniphy;
++
++	if (uniphy->data->uniphy_type == UNIPHY_IPQ5018) {
++		clk_disable(uniphy->clks[port_rx_clk_idx(upcs)].clk);
++		clk_disable(uniphy->clks[port_tx_clk_idx(upcs)].clk);
++	}
++}
++
++static int qca_uniphy_pcs_enable(struct phylink_pcs *pcs)
++{
++	struct qca_uniphy_pcs *upcs = to_qca_uniphy_pcs(pcs);
++	struct qca_uniphy *uniphy = upcs->uniphy;
++	int ret;
++
++	if (uniphy->data->uniphy_type == UNIPHY_IPQ5018) {
++		ret = clk_enable(uniphy->clks[port_rx_clk_idx(upcs)].clk);
++		if (ret) {
++			dev_err(uniphy->dev, "Failed to enable RX clock for channel %d\n",
++				upcs->channel);
++			return ret;
++		}
++		ret = clk_enable(uniphy->clks[port_tx_clk_idx(upcs)].clk);
++		if (ret) {
++			dev_err(uniphy->dev, "Failed to enable TX clock for channel %d\n",
++				upcs->channel);
++			return ret;
++		}
++	}
++
++	return 0;
++}
++
++static void qca_uniphy_pcs_an_restart(struct phylink_pcs *pcs) { }
++
++static const struct phylink_pcs_ops qca_uniphy_pcs_ops = {
++	.pcs_validate = qca_uniphy_pcs_validate,
++	.pcs_inband_caps = qca_uniphy_pcs_inband_caps,
++	.pcs_get_state = qca_uniphy_pcs_get_state,
++	.pcs_config = qca_uniphy_pcs_config,
++	.pcs_link_up = qca_uniphy_pcs_link_up,
++	.pcs_disable = qca_uniphy_pcs_disable,
++	.pcs_enable = qca_uniphy_pcs_enable,
++	.pcs_an_restart = qca_uniphy_pcs_an_restart,
++};
++
++static const struct of_device_id qca_uniphy_of_match[] = {
++	{ .compatible = "qualcomm,ipq5018-uniphy", .data = &ipq5018_data },
++	{ .compatible = "qualcomm,ipq6018-uniphy", .data = &ipq6018_data },
++	{ .compatible = "qualcomm,ipq8074-uniphy", .data = &ipq8074_data },
++	{ },
++};
++MODULE_DEVICE_TABLE(of, qca_uniphy_of_match);
++
++static int uniphy_pcs_regmap_read(void *context, unsigned int reg,
++				  unsigned int *val)
++{
++	struct qca_uniphy *uniphy = context;
++
++	/* PCS uses direct AHB access while XPCS uses indirect AHB access */
++	if (reg >= XPCS_INDIRECT_ADDR) {
++		writel(FIELD_GET(XPCS_INDIRECT_ADDR_H, reg),
++		       uniphy->base + XPCS_INDIRECT_AHB_ADDR);
++		*val = readl(uniphy->base + XPCS_INDIRECT_DATA_ADDR(reg));
++	} else {
++		*val = readl(uniphy->base + reg);
++	}
++
++	return 0;
++}
++
++static int uniphy_pcs_regmap_write(void *context, unsigned int reg,
++				   unsigned int val)
++{
++	struct qca_uniphy *uniphy = context;
++
++	/* PCS uses direct AHB access while XPCS uses indirect AHB access */
++	if (reg >= XPCS_INDIRECT_ADDR) {
++		writel(FIELD_GET(XPCS_INDIRECT_ADDR_H, reg),
++		       uniphy->base + XPCS_INDIRECT_AHB_ADDR);
++		writel(val, uniphy->base + XPCS_INDIRECT_DATA_ADDR(reg));
++	} else {
++		writel(val, uniphy->base + reg);
++	}
++
++	return 0;
++}
++
++static struct phylink_pcs *qca_uniphy_get(struct fwnode_reference_args *pcsspec,
++					  void *data)
++{
++	struct qca_uniphy *uniphy = data;
++	struct device *dev = uniphy->dev;
++	int channel = 0;
++
++	if (pcsspec->nargs > 1) {
++		dev_err(dev, "Invalid number of cells in 'pcs-handle' property\n");
++		return ERR_PTR(-EINVAL);
++	}
++
++	if (pcsspec->nargs)
++		channel = pcsspec->args[0];
++
++	if (channel >= QCA_UNIPHY_CHANNELS) {
++		dev_err(dev, "Invalid channel in 'pcs-handle' property\n");
++		return ERR_PTR(-EINVAL);
++	}
++
++	return &uniphy->port_pcs[channel].pcs;
++}
++
++static const struct regmap_config uniphy_regmap_cfg = {
++	.reg_bits = 32,
++	.val_bits = 32,
++	.reg_read = uniphy_pcs_regmap_read,
++	.reg_write = uniphy_pcs_regmap_write,
++	.fast_io = true,
++};
++
++static int qca_uniphy_probe(struct platform_device *pdev)
++{
++	struct fwnode_pcs_provider *provider;
++	struct device *dev = &pdev->dev;
++	struct clk_bulk_data *clks;
++	struct qca_uniphy *uniphy;
++	int ret, i, num_clks;
++
++	uniphy = devm_kzalloc(dev, sizeof(*uniphy), GFP_KERNEL);
++	if (!uniphy)
++		return -ENOMEM;
++
++	uniphy->dev = dev;
++
++	uniphy->data = device_get_match_data(dev);
++	if (!uniphy->data)
++		return -EINVAL;
++
++	uniphy->base = devm_platform_ioremap_resource(pdev, 0);
++	if (IS_ERR(uniphy->base))
++		return dev_err_probe(dev, PTR_ERR(uniphy->base),
++				     "Failed to ioremap resource");
++
++	uniphy->regmap = devm_regmap_init(dev, NULL, uniphy, &uniphy_regmap_cfg);
++	if (IS_ERR(uniphy->regmap))
++		return dev_err_probe(dev, PTR_ERR(uniphy->regmap),
++				     "Failed to init regmap");
++
++	uniphy->rst_soft = devm_reset_control_get_exclusive(dev, "soft");
++	if (IS_ERR(uniphy->rst_soft))
++		return dev_err_probe(dev, PTR_ERR(uniphy->rst_soft),
++				     "Failed to get soft reset\n");
++
++	uniphy->rst_xpcs = devm_reset_control_get_optional_exclusive(dev, "xpcs");
++	if (IS_ERR(uniphy->rst_xpcs))
++		return dev_err_probe(dev, PTR_ERR(uniphy->rst_xpcs),
++				     "Failed to get xpcs reset\n");
++
++	num_clks = devm_clk_bulk_get_all_enabled(dev, &clks);
++	if (num_clks < 0)
++		return dev_err_probe(dev, num_clks, "Failed to get clocks\n");
++
++	uniphy->clks = clks;
++	uniphy->num_clks = num_clks;
++
++	ret = qca_uniphy_register_clks(uniphy);
++	if (ret)
++		return dev_err_probe(dev, ret, "Failed to register output clocks\n");
++
++	for (i = 0; i < QCA_UNIPHY_CHANNELS; i++) {
++		uniphy->port_pcs[i].pcs.ops = &qca_uniphy_pcs_ops;
++		uniphy->port_pcs[i].pcs.neg_mode = true;
++		uniphy->port_pcs[i].pcs.poll = true;
++		uniphy->port_pcs[i].uniphy = uniphy;
++		uniphy->port_pcs[i].channel = i;
++	}
++
++	platform_set_drvdata(pdev, uniphy);
++
++	provider = devm_fwnode_pcs_add_provider(dev, dev_fwnode(dev),
++						qca_uniphy_get, uniphy);
++	if (IS_ERR(provider))
++		return dev_err_probe(dev, PTR_ERR(provider), "Failed to add PCS provider\n");
++
++	return 0;
++}
++
++static struct platform_driver qca_uniphy_driver = {
++	.driver = {
++		.name			= "qca-uniphy",
++		.suppress_bind_attrs	= true,
++		.of_match_table		= qca_uniphy_of_match,
++	},
++	.probe = qca_uniphy_probe,
++};
++module_platform_driver(qca_uniphy_driver);
++
++MODULE_DESCRIPTION("Qualcomm IPQ6018 UNIPHY PCS driver");
++MODULE_LICENSE("GPL");
+diff --git a/target/linux/qualcommax/files/include/dt-bindings/net/pcs/qualcomm,ipq-uniphy.yaml b/target/linux/qualcommax/files/include/dt-bindings/net/pcs/qualcomm,ipq-uniphy.yaml
+new file mode 100644
+index 0000000000..3548cb51ad
+--- /dev/null
++++ b/target/linux/qualcommax/files/include/dt-bindings/net/pcs/qualcomm,ipq-uniphy.yaml
+@@ -0,0 +1,208 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/net/pcs/qualcomm,ipq-uniphy.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Qualcomm IPQ UNIPHY PCS
++
++maintainers:
++  - John Crispin <john@phrozen.org>
++  - Christian Marangi <ansuelsmth@gmail.com>
++
++description: |
++  The UNIPHY blocks found in Qualcomm IPQ AX and BE SoCs provide SerDes-based
++  Physical Coding Sublayer (PCS) controllers. Each SoC contains one or multiple
++  UNIPHY instances. An instance can operate in PSGMII mode or in single-channel
++  mode (SGMII, 2500BASE-X, USXGMII). The PPE DSA switch driver references
++  UNIPHY instances through pcs-handle phandles.
++
++properties:
++  compatible:
++    enum:
++      - qualcomm,ipq5018-uniphy
++      - qualcomm,ipq6018-uniphy
++      - qualcomm,ipq8074-uniphy
++
++  reg:
++    maxItems: 1
++
++  '#pcs-cells':
++    const: 1
++    description:
++      The single cell specifies the channel index within the UNIPHY instance.
++
++  clocks:
++    minItems: 4
++    maxItems: 12
++    description: |
++      Core clocks (AHB, SYS) are always required. Per-channel RX/TX clock
++      pairs are provided for each port the UNIPHY instance serves. Instances
++      serving a single port have 4 clocks, PSGMII instances serving 5 ports
++      have 12. The CMN PLL CC provides a 50MHz reference clock to the UNIPHY
++      PCS which gates and divides it to pass through either a 25 MHz or 50 MHz
++      clock to an attached Ethernet PHY or a switch.
++    items:
++        - description: ahb clock
++        - description: sys clock
++        - description: port1_rx or port5_rx or port6_rx clock
++        - description: port1_tx or port5_tx or port6_tx clock
++        - description: port2_rx clock
++        - description: port2_tx clock
++        - description: port3_rx clock
++        - description: port3_tx clock
++        - description: port4_rx clock
++        - description: port4_tx clock
++        - description: port5_rx clock
++        - description: port5_tx clock
++        - description: CMN PLL reference clock
++
++  clock-names:
++    minItems: 4
++    maxItems: 12
++    items:
++        - const: ahb
++        - const: sys
++        - enum: [port1_rx, port5_rx, port6_rx]
++        - enum: [port1_tx, port5_tx, port6_tx]
++        - const: port2_rx
++        - const: port2_tx
++        - const: port3_rx
++        - const: port3_tx
++        - const: port4_rx
++        - const: port4_tx
++        - const: port5_rx
++        - const: port5_tx
++        - const: ref
++
++  clock-output-names:
++    description: Name of the uniphy GCC clock for TX and RX.
++    items:
++      - enum:
++          - uniphy0_gcc_tx_clk
++          - uniphy1_gcc_tx_clk
++          - uniphy2_gcc_tx_clk
++      - enum:
++          - uniphy0_gcc_rx_clk
++          - uniphy1_gcc_rx_clk
++          - uniphy2_gcc_rx_clk
++      - const: uniphy0_ref_clk
++
++  '#clock-cells':
++    const: 1
++
++  resets:
++    minItems: 1
++    items:
++      - description: soft reset
++      - description: xpcs reset
++
++  reset-names:
++    minItems: 1
++    items:
++      - const: soft
++      - const: xpcs
++
++required:
++  - compatible
++  - reg
++  - '#pcs-cells'
++  - clocks
++  - clock-names
++  - resets
++  - reset-names
++
++additionalProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/clock/qcom,gcc-ipq8074.h>
++    #include <dt-bindings/net/qca-uniphy.h>
++
++    ethernet-pcs@7a10000 {
++        compatible = "qualcomm,ipq8074-uniphy";
++        reg = <0x7a10000 0x10000>;
++
++        clocks = <&gcc GCC_UNIPHY1_AHB_CLK>,
++                 <&gcc GCC_UNIPHY1_SYS_CLK>,
++                 <&gcc GCC_UNIPHY1_PORT5_RX_CLK>,
++                 <&gcc GCC_UNIPHY1_PORT5_TX_CLK>;
++        clock-names = "ahb", "sys",
++                      "port5_rx", "port5_tx";
++
++        clock-output-names = "uniphy1_gcc_tx_clk",
++                             "uniphy1_gcc_rx_clk";
++
++        resets = <&gcc GCC_UNIPHY1_SOFT_RESET>,
++                 <&gcc GCC_UNIPHY1_XPCS_RESET>;
++        reset-names = "soft", "xpcs";
++
++        #pcs-cells = <1>;
++    };
++
++  - |
++    #include <dt-bindings/clock/qcom,gcc-ipq6018.h>
++    #include <dt-bindings/net/qca-uniphy.h>
++
++    ethernet-pcs@7a00000 {
++        compatible = "qualcomm,ipq6018-uniphy";
++        reg = <0x7a00000 0x10000>;
++        qcom,psgmii;
++
++        clocks = <&gcc GCC_UNIPHY0_AHB_CLK>,
++                 <&gcc GCC_UNIPHY0_SYS_CLK>,
++                 <&gcc GCC_UNIPHY0_PORT1_RX_CLK>,
++                 <&gcc GCC_UNIPHY0_PORT1_TX_CLK>,
++                 <&gcc GCC_UNIPHY0_PORT2_RX_CLK>,
++                 <&gcc GCC_UNIPHY0_PORT2_TX_CLK>,
++                 <&gcc GCC_UNIPHY0_PORT3_RX_CLK>,
++                 <&gcc GCC_UNIPHY0_PORT3_TX_CLK>,
++                 <&gcc GCC_UNIPHY0_PORT4_RX_CLK>,
++                 <&gcc GCC_UNIPHY0_PORT4_TX_CLK>,
++                 <&gcc GCC_UNIPHY0_PORT5_RX_CLK>,
++                 <&gcc GCC_UNIPHY0_PORT5_TX_CLK>;
++        clock-names = "ahb", "sys",
++                      "port1_rx", "port1_tx",
++                      "port2_rx", "port2_tx",
++                      "port3_rx", "port3_tx",
++                      "port4_rx", "port4_tx",
++                      "port5_rx", "port5_tx";
++
++        clock-output-names = "uniphy0_gcc_tx_clk",
++                             "uniphy0_gcc_rx_clk";
++
++        resets = <&gcc GCC_UNIPHY0_SOFT_RESET>,
++                 <&gcc GCC_UNIPHY0_XPCS_RESET>;
++        reset-names = "soft", "xpcs";
++
++        #pcs-cells = <1>;
++    };
++
++  - |
++    #include <dt-bindings/clock/qcom,gcc-ipq5018.h>
++    #include <dt-bindings/net/qca-uniphy.h>
++
++    ethernet-pcs@98000 {
++        compatible = "qualcomm,ipq5018-uniphy";
++        reg = <0x00098000 0x800>;
++        #clock-cells = <1>;
++        clocks = <&gcc GCC_UNIPHY_AHB_CLK>,
++                 <&gcc GCC_UNIPHY_SYS_CLK>,
++                 <&gcc GCC_UNIPHY_RX_CLK>,
++                 <&gcc GCC_UNIPHY_TX_CLK>,
++                 <&cmn_pll IPQ5018_ETH_50MHZ_CLK>;
++        clock-names = "ahb",
++                      "sys",
++                      "port5_rx",
++                      "port5_tx",
++                      "ref";
++        assigned-clocks = <&uniphy0 UNIPHY_CLK_REF>;
++        assigned-clock-rates = <UNIPHY_REFCLK_25MHZ>;
++        clock-output-names = "uniphy0_gcc_rx_clk",
++                             "uniphy0_gcc_tx_clk",
++                             "uniphy0_ref_clk";
++        resets = <&gcc GCC_UNIPHY_SOFT_RESET>;
++        reset-names = "soft";
++
++        #pcs-cells = <0>;
++    };
+diff --git a/target/linux/qualcommax/files/include/dt-bindings/net/qca-uniphy.h b/target/linux/qualcommax/files/include/dt-bindings/net/qca-uniphy.h
+new file mode 100644
+index 0000000000..021cd057b0
+--- /dev/null
++++ b/target/linux/qualcommax/files/include/dt-bindings/net/qca-uniphy.h
+@@ -0,0 +1,16 @@
++/* SPDX-License-Identifier: GPL-2.0-only */
++/*
++ * Device Tree constants for the Qualcomm UNIPHY
++ */
++
++#ifndef _DT_BINDINGS_QCA_UNIPHY_H
++#define _DT_BINDINGS_QCA_UNIPHY_H
++
++#define UNIPHY_CLK_RX		0
++#define UNIPHY_CLK_TX		1
++#define UNIPHY_CLK_REF		2
++
++#define UNIPHY_REFCLK_25MHZ	25000000
++#define	UNIPHY_REFCLK_50MHZ	50000000
++
++#endif
+diff --git a/target/linux/qualcommax/files/include/dt-bindings/net/qcom,ipq5018-gmac.yaml b/target/linux/qualcommax/files/include/dt-bindings/net/qcom,ipq5018-gmac.yaml
+new file mode 100644
+index 0000000000..1590642877
+--- /dev/null
++++ b/target/linux/qualcommax/files/include/dt-bindings/net/qcom,ipq5018-gmac.yaml
+@@ -0,0 +1,131 @@
++# SPDX-License-Identifier: GPL-2.0
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/net/qcom,ipq5018-gmac.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Qualcomm IPQ5018 DWMAC glue layer (GMAC)
++
++maintainers:
++  - George Moussalem <george.moussalem@outlook.com>
++
++description: |
++  This file documents platform glue layer for Qualcomm IPQ5018 DWMAC (GMAC)
++  The MAC supports speeds of 10/100/1000/2500 Mbps and supports SGMII and
++  2500base-x interface modes. The IPQ5018 SoC has two GMACs:
++  The first MAC (GMAC0) is connected to an the SoC's internal IPQ5018 ethernet
++  GE PHY while the second MAC is connected to the SoC's UNIPHY PCS which is turn
++  can be wired to an external switch or PHY.
++  This MAC is of Synopsys DesignWare IP version 3.70a.
++
++# We need a select here so we don't match all nodes with 'snps,dwmac'
++select:
++  properties:
++    compatible:
++      contains:
++        enum:
++          - qcom,ipq5018-gmac
++  required:
++    - compatible
++
++properties:
++  compatible:
++    items:
++      - enum:
++          - qcom,ipq5018-gmac
++      - const: snps,dwmac
++
++  reg: true
++
++  reg-names:
++    items:
++      - const: stmmaceth
++
++  clocks:
++    minItems: 7
++
++  clock-names:
++    contains:
++      enum:
++        - stmmaceth
++        - pclk
++        - ptp_ref
++        - ahb
++        - axi
++        - rx
++        - tx
++
++  resets: true
++
++  reset-names:
++    items:
++      - const: stmmaceth
++
++  interrupts:
++    minItems: 1
++
++  interrupt-names:
++    items:
++      - const: macirq
++
++  pcs-handle:
++    $ref: ethernet-controller.yaml#/properties/pcs-handle
++    description:
++      A reference to an optional PCS PHY device (GMAC1 <-> UNIPHY PCS)
++
++required:
++  - compatible
++  - clocks
++  - clock-names
++  - resets
++  - reset-names
++  - interrupts
++  - interrupt-names
++
++allOf:
++  - $ref: snps,dwmac.yaml#
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/clock/qcom,gcc-ipq5018.h>
++    #include <dt-bindings/interrupt-controller/arm-gic.h>
++    #include <dt-bindings/reset/qcom,gcc-ipq5018.h>
++    
++    gmac1: ethernet@39d00000 {
++        compatible = "qcom,ipq5018-gmac", "snps,dwmac";
++        reg = <0x39d00000 0x10000>;
++        reg-names = "stmmaceth";
++        clocks = <&gcc GCC_GMAC1_SYS_CLK>,
++                 <&gcc GCC_GMAC1_CFG_CLK>,
++                 <&gcc GCC_GMAC1_PTP_CLK>,
++                 <&gcc GCC_SNOC_GMAC1_AHB_CLK>,
++                 <&gcc GCC_SNOC_GMAC1_AXI_CLK>,
++                 <&gcc GCC_GMAC1_RX_CLK>,
++                 <&gcc GCC_GMAC1_TX_CLK>;
++        clock-names = "stmmaceth",
++                      "pclk",
++                      "ptp_ref",
++                      "ahb",
++                      "axi",
++                      "rx",
++                      "tx";
++        assigned-clocks = <&gcc GCC_GMAC1_SYS_CLK>,
++                          <&gcc GCC_GMAC1_CFG_CLK>,
++                          <&gcc GCC_GMAC1_PTP_CLK>,
++                          <&gcc GCC_SNOC_GMAC1_AHB_CLK>,
++                          <&gcc GCC_SNOC_GMAC1_AXI_CLK>;
++        assigned-clock-rates = <240000000>,
++                               <240000000>,
++                               <240000000>,
++                               <240000000>,
++                               <240000000>;
++        resets = <&gcc GCC_GMAC1_BCR>;
++        reset-names = "stmmaceth";
++        interrupts = <GIC_SPI 109 IRQ_TYPE_LEVEL_HIGH>;
++        interrupt-names = "macirq";
++
++        phy-mode = "sgmii";
++        pcs-handle = <&uniphy0>;
++    };
+diff --git a/target/linux/qualcommax/files/include/linux/pcs/pcs-qca-uniphy.h b/target/linux/qualcommax/files/include/linux/pcs/pcs-qca-uniphy.h
+new file mode 100644
+index 0000000000..a3ed045f57
+--- /dev/null
++++ b/target/linux/qualcommax/files/include/linux/pcs/pcs-qca-uniphy.h
+@@ -0,0 +1,150 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef __QCA_UNIPHY_H
++#define __QCA_UNIPHY_H
++
++#include <linux/bitfield.h>
++#include <linux/clk.h>
++#include <linux/clk-provider.h>
++#include <linux/phylink.h>
++#include <linux/reset.h>
++
++#define QCA_UNIPHY_CHANNELS		5
++
++#define IPQ5018_UNIPHY_REFCLK		0x74
++#define  IPQ5018_UNIPHY_REFCLK_EN	BIT(0)
++#define  IPQ5018_UNIPHY_REFCLK_DIV	BIT(1)	/* 0 (default): 50MHz, 1: 25MHz */
++#define  IPQ5018_UNIPHY_REFCLK_DS	GENMASK(3, 2) /* 0: 2.8V, 1 (default): 1.5V */
++
++#define UNIPHY_OFFSET_CALIB_4		0x1e0
++#define   UNIPHY_CALIBRATION_DONE	BIT(7)
++
++#define UNIPHY_MISC2_PHY_MODE		0x218
++#define   UNIPHY_MISC2_PHY_MODE_MASK	GENMASK(6, 4)
++#define     UNIPHY_MISC2_SGMII		FIELD_PREP_CONST(UNIPHY_MISC2_PHY_MODE_MASK, 0x3)
++#define     UNIPHY_MISC2_SGMIIPLUS	FIELD_PREP_CONST(UNIPHY_MISC2_PHY_MODE_MASK, 0x5)
++#define     UNIPHY_MISC2_USXGMII	FIELD_PREP_CONST(UNIPHY_MISC2_PHY_MODE_MASK, 0x7)
++
++#define UNIPHY_MODE_CTRL		0x46c
++#define   UNIPHY_MODE_SEL_MASK		GENMASK(12, 8)
++#define   UNIPHY_XPCS_MODE		BIT(12)
++#define   UNIPHY_SGPLUS_MODE		BIT(11)
++#define   UNIPHY_SGMII_MODE		BIT(10)
++#define   UNIPHY_CH0_PSGMII_QSGMII	BIT(9)
++#define   UNIPHY_CH0_QSGMII_SGMII	BIT(8)
++#define   UNIPHY_CH0_MODE_CTRL_25M	GENMASK(6, 4)
++#define   UNIPHY_CH0_MODE_1000BASEX	0
++#define   UNIPHY_CH0_MODE_MAC		2
++#define   UNIPHY_AUTONEG_MODE_ATH	BIT(0)
++
++#define UNIPHY_PLL_POWER_ON_AND_RESET	0x780
++#define   UNIPHY_PLL_RESET_ANALOG	BIT(6)
++
++#define UNIPHY_CH_BASE(ch)		(0x480 + (ch) * 0x18)
++
++#define UNIPHY_CH_CTRL(ch)		(UNIPHY_CH_BASE(ch) + 0x0)
++#define   UNIPHY_CH_SPEED_MODE		GENMASK(2, 1)
++#define   UNIPHY_CH_FORCE_MODE		BIT(3)
++#define   UNIPHY_CH_AN_ENABLE		BIT(6)
++#define   UNIPHY_CH_AN_RESTART		BIT(7)
++#define   UNIPHY_CH_ADP_SW_RSTN		BIT(11)
++
++#define UNIPHY_CH_STS(ch)		(UNIPHY_CH_BASE(ch) + 0x8)
++#define   UNIPHY_CH_STS_RX_PAUSE	BIT(0)
++#define   UNIPHY_CH_STS_TX_PAUSE	BIT(1)
++#define   UNIPHY_CH_STS_SPEED_MODE	GENMASK(5, 4)
++#define   UNIPHY_CH_STS_DUPLEX		BIT(6)
++#define   UNIPHY_CH_STS_LINK		BIT(7)
++
++#define XPCS_INDIRECT_ADDR		0x8000
++#define XPCS_INDIRECT_AHB_ADDR		0x83fc
++#define XPCS_INDIRECT_ADDR_H		GENMASK(20, 8)
++#define XPCS_INDIRECT_ADDR_L		GENMASK(7, 0)
++#define XPCS_INDIRECT_DATA_ADDR(reg)	(FIELD_PREP(GENMASK(15, 10), 0x20) | \
++					 FIELD_PREP(GENMASK(9, 2), \
++					 FIELD_GET(XPCS_INDIRECT_ADDR_L, reg)))
++
++#define XPCS_KR_STS1			0x30020
++#define XPCS_KR_STS1_PLU		BIT(12)
++
++#define XPCS_DIG_CTRL			0x38000
++#define XPCS_SOFT_RESET			BIT(15)
++#define XPCS_USXG_ADPT_RESET		BIT(10)
++#define XPCS_USXG_EN			BIT(9)
++
++#define XPCS_MII_CTRL			0x1f0000
++#define XPCS_MII1_CTRL(x)		(0x1a0000 + 0x10000 * ((x) - 1))
++#define XPCS_MII_AN_EN			BIT(12)
++#define XPCS_DUPLEX_FULL		BIT(8)
++#define XPCS_SPEED_MASK			(BIT(13) | BIT(6) | BIT(5))
++#define XPCS_SPEED_10000		(BIT(13) | BIT(6))
++#define XPCS_SPEED_5000			(BIT(13) | BIT(5))
++#define XPCS_SPEED_2500			BIT(5)
++#define XPCS_SPEED_1000			BIT(6)
++#define XPCS_SPEED_100			BIT(13)
++#define XPCS_SPEED_10			0
++
++#define XPCS_MII_AN_CTRL		0x1f8001
++#define XPCS_MII1_AN_CTRL(x)		(0x1a8001 + 0x10000 * ((x) - 1))
++#define XPCS_MII_AN_8BIT		BIT(8)
++
++#define XPCS_MII_AN_INTR_STS		0x1f8002
++#define XPCS_MII1_AN_INTR_STS(x)	(0x1a8002 + 0x10000 * ((x) - 1))
++#define XPCS_USXG_AN_LINK_STS		BIT(14)
++#define XPCS_USXG_AN_SPEED_MASK		GENMASK(12, 10)
++#define XPCS_USXG_AN_SPEED_10		0
++#define XPCS_USXG_AN_SPEED_100		1
++#define XPCS_USXG_AN_SPEED_1000		2
++#define XPCS_USXG_AN_SPEED_2500		4
++#define XPCS_USXG_AN_SPEED_5000		5
++#define XPCS_USXG_AN_SPEED_10000	3
++
++#define UNIPHY_CALIBRATION_TIMEOUT_US	100000
++#define UNIPHY_CALIBRATION_POLL_US	1000
++
++enum qca_uniphy_type {
++	UNIPHY_IPQ5018,
++	UNIPHY_IPQ6018,
++	UNIPHY_IPQ8074,
++};
++
++struct qca_uniphy;
++
++struct qca_uniphy_clk {
++	struct clk_hw hw;
++	struct qca_uniphy *uniphy;
++};
++
++struct qca_uniphy_pcs {
++	struct phylink_pcs pcs;
++	struct qca_uniphy *uniphy;
++	int channel;
++};
++
++struct qca_uniphy_match_data {
++	enum qca_uniphy_type uniphy_type;
++	bool ref_clk_enable;
++};
++
++#define to_qca_uniphy_pcs(n) container_of(pcs, struct qca_uniphy_pcs, pcs);
++
++struct qca_uniphy {
++	struct device *dev;
++	void __iomem *base;
++	struct regmap *regmap;
++	struct reset_control *rst_ahb;
++	struct reset_control *rst_soft;
++	struct reset_control *rst_xpcs;
++	struct clk_bulk_data *clks;
++	int num_clks;
++	struct qca_uniphy_pcs port_pcs[QCA_UNIPHY_CHANNELS];
++	struct qca_uniphy_clk rx_clk;
++	struct qca_uniphy_clk tx_clk;
++	struct qca_uniphy_clk ref_clk;
++	const struct qca_uniphy_match_data *data;
++	phy_interface_t interface;
++};
++
++#define port_rx_clk_idx(upcs)	((upcs)->channel * 2) + 2
++#define port_tx_clk_idx(upcs)	(((upcs)->channel * 2) + 1) + 2
++
++#endif
+diff --git a/target/linux/qualcommax/image/ipq50xx.mk b/target/linux/qualcommax/image/ipq50xx.mk
+index 60348ccea6..24894f5930 100644
+--- a/target/linux/qualcommax/image/ipq50xx.mk
++++ b/target/linux/qualcommax/image/ipq50xx.mk
+@@ -181,6 +181,28 @@ define Device/linksys_spnmx56
+ endef
+ TARGET_DEVICES += linksys_spnmx56
+ 
++define Device/tplink_archer-ax55-v1
++	$(call Device/FitImageLzma)
++	$(call Device/UbiFit)
++	DEVICE_VENDOR := TP-Link
++	DEVICE_MODEL := Archer AX55
++	DEVICE_VARIANT := v1
++	DEVICE_DTS := ipq5018-tplink-archer-ax55-v1
++	DEVICE_DTS_CONFIG := config@mp03.3
++	SOC := ipq5018
++	BLOCKSIZE := 128k
++	PAGESIZE := 2048
++	IMAGE_SIZE := 43008k
++	NAND_SIZE := 128m
++	DEVICE_PACKAGES := ath11k-firmware-ipq5018-qcn6122 \
++		ipq-wifi-tplink_ax55v1 \
++		-kmod-qca-nss-dp \
++		kmod-dsa-realtek kmod-dsa-rtl8365mb \
++		kmod-nft-offload \
++		kmod-usb-ledtrig-usbport
++endef
++TARGET_DEVICES += tplink_archer-ax55-v1
++
+ define Device/xiaomi_ax6000
+ 	$(call Device/FitImage)
+ 	$(call Device/UbiFit)
+diff --git a/target/linux/qualcommax/ipq50xx/base-files/etc/board.d/01_leds b/target/linux/qualcommax/ipq50xx/base-files/etc/board.d/01_leds
+index 874e96d489..a00027b85e 100644
+--- a/target/linux/qualcommax/ipq50xx/base-files/etc/board.d/01_leds
++++ b/target/linux/qualcommax/ipq50xx/base-files/etc/board.d/01_leds
+@@ -34,6 +34,12 @@ xiaomi,ax6000)
+ 	ucidef_set_led_netdev "wan-port-link-top-blue" "WAN-PORT-LINK-TOP-BLUE" "blue:wan" "wan" "link_1000 link_2500"
+ 	ucidef_set_led_netdev "wan-port-link-top-yellow" "WAN-PORT-LINK-TOP-YELLOW" "yellow:wan" "wan" "link_10 link_100"
+ 	;;
++tplink,archer-ax55-v1)
++	ucidef_set_led_netdev "lan" "LAN" "green:lan" "br-lan"
++	ucidef_set_led_netdev "wan" "WAN" "green:wan-online" "wan"
++	ucidef_set_led_netdev "wlan2g" "WLAN2G" "green:wlan-2ghz" "phy0-ap0" "link tx rx"
++	ucidef_set_led_netdev "wlan5g" "WLAN5G" "green:wlan-5ghz" "phy1-ap0" "link tx rx"
++	;;
+ esac
+ 
+ board_config_flush
+diff --git a/target/linux/qualcommax/ipq50xx/base-files/etc/board.d/02_network b/target/linux/qualcommax/ipq50xx/base-files/etc/board.d/02_network
+index 16aa187ec8..36274352d6 100644
+--- a/target/linux/qualcommax/ipq50xx/base-files/etc/board.d/02_network
++++ b/target/linux/qualcommax/ipq50xx/base-files/etc/board.d/02_network
+@@ -7,6 +7,7 @@ ipq50xx_setup_interfaces()
+ {
+ 	local board="$1"
+ 	case $board in
++	tplink,archer-ax55-v1|\
+ 	elecom,wrc-x3000gs2|\
+ 	iodata,wn-dax3000gr|\
+ 	linksys,mr5500|\
+@@ -32,9 +33,31 @@ ipq50xx_setup_interfaces()
+ 	esac
+ }
+ 
++ipq50xx_setup_macs()
++{
++	local board="$1"
++	local label_mac=""
++
++	case $board in
++	tplink,archer-ax55-v1)
++		# factory MAC is 6 raw bytes in tp_data/default-mac, mounted
++		# read-only during preinit (see lib/preinit/09_mount_tp_data)
++		label_mac=$(get_mac_binary "/tmp/tp_data/default-mac" 0)
++		[ -n "$label_mac" ] || return
++		ucidef_set_interface_macaddr "lan" "$label_mac"
++		ucidef_set_interface_macaddr "wan" "$(macaddr_add "$label_mac" 1)"
++		ucidef_set_label_macaddr "$label_mac"
++		# gmac1 has no nvmem MAC source, so stmmac would randomise the
++		# DSA conduit's address on every boot - pin it to the label MAC
++		ucidef_set_network_device_mac "eth0" "$label_mac"
++		;;
++	esac
++}
++
+ board_config_update
+ board=$(board_name)
+ ipq50xx_setup_interfaces $board
++ipq50xx_setup_macs $board
+ board_config_flush
+ 
+ exit 0
+diff --git a/target/linux/qualcommax/ipq50xx/base-files/etc/hotplug.d/firmware/11-ath11k-caldata b/target/linux/qualcommax/ipq50xx/base-files/etc/hotplug.d/firmware/11-ath11k-caldata
+index 92fd10a04f..0d1539a2c5 100644
+--- a/target/linux/qualcommax/ipq50xx/base-files/etc/hotplug.d/firmware/11-ath11k-caldata
++++ b/target/linux/qualcommax/ipq50xx/base-files/etc/hotplug.d/firmware/11-ath11k-caldata
+@@ -49,6 +49,13 @@ case "$FIRMWARE" in
+ 	xiaomi,ax6000)
+ 		caldata_extract "0:art" 0x1000 0x20000
+ 		;;
++	tplink,archer-ax55-v1)
++		caldata_extract "0:ART" 0x1000 0x20000
++		label_mac=$(get_mac_binary "/tmp/tp_data/default-mac" 0)
++		[ -n "$label_mac" ] && ath11k_patch_mac "$(macaddr_add "$label_mac" 2)" 0
++		ath11k_set_macflag
++		ath11k_remove_regdomain
++		;;
+ 	yuncore,ax830|\
+ 	yuncore,ax850)
+ 		caldata_extract "0:ART" 0x1000 0x20000
+@@ -95,6 +102,13 @@ case "$FIRMWARE" in
+ 		ath11k_remove_regdomain
+ 		ath11k_set_macflag
+ 		;;
++	tplink,archer-ax55-v1)
++		caldata_extract "0:ART" 0x26800 0x20000
++		label_mac=$(get_mac_binary "/tmp/tp_data/default-mac" 0)
++		[ -n "$label_mac" ] && ath11k_patch_mac "$(macaddr_add "$label_mac" 3)" 0
++		ath11k_set_macflag
++		ath11k_remove_regdomain
++		;;
+ 	yuncore,ax830)
+ 		caldata_extract "0:ART" 0x4c000 0x20000
+ 		label_mac=$(mtd_get_mac_binary 0:ART 0)
+diff --git a/target/linux/qualcommax/ipq50xx/base-files/lib/preinit/09_mount_tp_data b/target/linux/qualcommax/ipq50xx/base-files/lib/preinit/09_mount_tp_data
+new file mode 100644
+index 0000000000..abb34b996c
+--- /dev/null
++++ b/target/linux/qualcommax/ipq50xx/base-files/lib/preinit/09_mount_tp_data
+@@ -0,0 +1,27 @@
++#!/bin/sh
++# The TP-Link Archer AX55 v1 keeps its factory data (including the 6-byte
++# "default-mac") in the tp_data UBIFS volume. Attach and mount it read-only
++# during preinit so board.d/02_network and the ath11k caldata hotplug can
++# read the MAC without each attaching the volume themselves.
++
++. /lib/functions.sh
++
++preinit_mount_tp_data() {
++	[ "$(board_name)" = "tplink,archer-ax55-v1" ] || return
++
++	# ubiattach lives in /usr/sbin, which the preinit PATH omits
++	local PATH="/usr/sbin:/usr/bin:$PATH"
++	local mtd_num ubi_num
++
++	mtd_num=$(find_mtd_index tp_data)
++	[ -n "$mtd_num" ] || return
++
++	ubi_num=$(ubiattach -m "$mtd_num" 2>/dev/null | \
++		sed -n 's/.*device number \([0-9]*\).*/\1/p')
++	[ -n "$ubi_num" ] || return
++
++	mkdir -p /tmp/tp_data
++	mount -t ubifs -o ro "ubi${ubi_num}:tp_data" /tmp/tp_data 2>/dev/null
++}
++
++boot_hook_add preinit_main preinit_mount_tp_data
+diff --git a/target/linux/qualcommax/ipq50xx/base-files/lib/upgrade/platform.sh b/target/linux/qualcommax/ipq50xx/base-files/lib/upgrade/platform.sh
+index 7fe9728579..ae6ebce17a 100644
+--- a/target/linux/qualcommax/ipq50xx/base-files/lib/upgrade/platform.sh
++++ b/target/linux/qualcommax/ipq50xx/base-files/lib/upgrade/platform.sh
+@@ -199,6 +199,29 @@ platform_do_upgrade() {
+ 	glinet,gl-b3000)
+ 		glinet_do_upgrade "$1"
+ 		;;
++	tplink,archer-ax55-v1)
++		# Dual boot: install into the inactive rootfs/rootfs_1 slot,
++		# then point tp_boot_idx at it. The running slot is left
++		# untouched as a fallback - if the new image fails to load,
++		# TP-Link's U-Boot boots the other slot on its own (only on
++		# load failure though: there is no boot counter, a kernel
++		# that boots and then crashes is not detected).
++		local idx=1
++		CI_UBIPART="rootfs_1"
++		if grep -q 'ubi.mtd=rootfs_1' /proc/cmdline; then
++			idx=0
++			CI_UBIPART="rootfs"
++		fi
++		fw_setenv tp_boot_idx $idx || {
++			echo "failed to set tp_boot_idx $idx"
++			return 1
++		}
++		# a slot last written by TP-Link firmware carries extra
++		# volumes that would leave no room for ours
++		remove_oem_ubi_volume ubi_rootfs
++		remove_oem_ubi_volume tp_data
++		nand_do_upgrade "$1"
++		;;
+ 	linksys,mr5500|\
+ 	linksys,mx2000|\
+ 	linksys,mx5500|\
+diff --git a/target/linux/qualcommax/ipq50xx/config-default b/target/linux/qualcommax/ipq50xx/config-default
+index 33e5611af4..8559c8c64e 100644
+--- a/target/linux/qualcommax/ipq50xx/config-default
++++ b/target/linux/qualcommax/ipq50xx/config-default
+@@ -1,3 +1,21 @@
++# DWMAC + UNIPHY-PCS ethernet path (enabled per board through the DTS).
++# Kept as one block at the top of the file on purpose: these symbols must
++# not land in a hunk anchored at EOF, which is the most fragile context
++# when this series is applied to a downstream tree.
++#
++# PTP_1588_CLOCK belongs to that block and must stay built in. STMMAC_ETH
++# depends on PTP_1588_CLOCK_OPTIONAL, which follows PTP down to =m in any
++# build that pulls in kmod-ptp - CONFIG_ALL_KMODS=y does. kconfig then
++# demotes STMMAC_ETH and DWMAC_IPQ5018 to =m without a word, the build
++# still succeeds, and the image comes out with no eth0 at all.
++# CONFIG_DWMAC_GENERIC is not set
++CONFIG_DWMAC_IPQ5018=y
++# CONFIG_DWMAC_QCOM_ETHQOS is not set
++CONFIG_PCS_QCA_UNIPHY=y
++CONFIG_PCS_XPCS=y
++CONFIG_PTP_1588_CLOCK=y
++CONFIG_STMMAC_ETH=y
++CONFIG_STMMAC_PLATFORM=y
+ CONFIG_GPIO_WATCHDOG=y
+ # CONFIG_GPIO_WATCHDOG_ARCH_INITCALL is not set
+ CONFIG_GRO_CELLS=y
+@@ -12,6 +30,7 @@ CONFIG_NET_DSA_QCA8K=y
+ CONFIG_NET_DSA_QCA8K_LEDS_SUPPORT=y
+ CONFIG_NET_DSA_TAG_QCA=y
+ CONFIG_PHYLINK=y
++CONFIG_PHY_QCOM_IPQ5018_USB_SS=y
+ CONFIG_PHY_QCOM_M31_USB=y
+ CONFIG_PHY_QCOM_UNIPHY_PCIE_28LP=y
+ CONFIG_PINCTRL_IPQ5018=y
+diff --git a/target/linux/qualcommax/patches-6.12/0842-arm64-dts-qcom-ipq5018-add-uniphy-node.patch b/target/linux/qualcommax/patches-6.12/0842-arm64-dts-qcom-ipq5018-add-uniphy-node.patch
+new file mode 100644
+index 0000000000..58983e8e2e
+--- /dev/null
++++ b/target/linux/qualcommax/patches-6.12/0842-arm64-dts-qcom-ipq5018-add-uniphy-node.patch
+@@ -0,0 +1,51 @@
++--- a/arch/arm64/boot/dts/qcom/ipq5018.dtsi
+++++ b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
++@@ -9,6 +9,7 @@
++ #include <dt-bindings/clock/qcom,gcc-ipq5018.h>
++ #include <dt-bindings/clock/qcom,ipq5018-cmn-pll.h>
++ #include <dt-bindings/interrupt-controller/arm-gic.h>
+++#include <dt-bindings/net/qca-uniphy.h>
++ #include <dt-bindings/reset/qcom,gcc-ipq5018.h>
++ #include <dt-bindings/thermal/thermal.h>
++ 
++@@ -255,6 +256,29 @@
++ 			status = "disabled";
++ 		};
++ 
+++		uniphy0: ethernet-pcs@98000 {
+++			compatible = "qualcomm,ipq5018-uniphy";
+++			reg = <0x00098000 0x800>;
+++			#clock-cells = <1>;
+++			clocks = <&gcc GCC_UNIPHY_AHB_CLK>,
+++				 <&gcc GCC_UNIPHY_SYS_CLK>,
+++				 <&gcc GCC_UNIPHY_RX_CLK>,
+++				 <&gcc GCC_UNIPHY_TX_CLK>,
+++				 <&cmn_pll IPQ5018_ETH_50MHZ_CLK>;
+++			clock-names = "ahb",
+++				      "sys",
+++				      "port5_rx",
+++				      "port5_tx",
+++				      "ref";
+++			clock-output-names = "uniphy_gcc_rx",
+++					     "uniphy_gcc_tx",
+++					     "uniphy0_ref_clk";
+++			resets = <&gcc GCC_UNIPHY_SOFT_RESET>;
+++			reset-names = "soft";
+++			#pcs-cells = <0>;
+++			status = "disabled";
+++		};
+++
++ 		cmn_pll: clock-controller@9b000 {
++ 			compatible = "qcom,ipq5018-cmn-pll";
++ 			reg = <0x0009b000 0x800>;
++@@ -446,8 +470,8 @@
++ 				 <0>,
++ 				 <&gephy_rx_clk>,
++ 				 <&gephy_tx_clk>,
++-				 <0>,
++-				 <0>;
+++				 <&uniphy0 UNIPHY_CLK_RX>,
+++				 <&uniphy0 UNIPHY_CLK_TX>;
++ 			#clock-cells = <1>;
++ 			#reset-cells = <1>;
++ 		};
+diff --git a/target/linux/qualcommax/patches-6.12/0843-net-stmmac-add-get_interfaces-platform-method.patch b/target/linux/qualcommax/patches-6.12/0843-net-stmmac-add-get_interfaces-platform-method.patch
+new file mode 100644
+index 0000000000..3e415d24fb
+--- /dev/null
++++ b/target/linux/qualcommax/patches-6.12/0843-net-stmmac-add-get_interfaces-platform-method.patch
+@@ -0,0 +1,56 @@
++From ca732e990fc8222a2d6782ae750304719e212fe8 Mon Sep 17 00:00:00 2001
++From: "Russell King (Oracle)" <rmk+kernel@armlinux.org.uk>
++Date: Thu, 1 May 2025 12:45:11 +0100
++Subject: [PATCH] net: stmmac: add get_interfaces() platform method
++
++Add a get_interfaces() platform method to allow platforms to indicate
++to phylink which interface modes they support - which then allows
++phylink to validate on initialisation that the configured PHY interface
++mode is actually supported.
++
++Signed-off-by: Russell King (Oracle) <rmk+kernel@armlinux.org.uk>
++Link: https://patch.msgid.link/E1uASLn-0021Qd-Mi@rmk-PC.armlinux.org.uk
++Signed-off-by: Jakub Kicinski <kuba@kernel.org>
++---
++ .../net/ethernet/stmicro/stmmac/stmmac_main.c    | 16 +++++++++++++---
++ include/linux/stmmac.h                           |  2 ++
++ 2 files changed, 15 insertions(+), 3 deletions(-)
++
++--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
++@@ -1250,10 +1250,21 @@ static int stmmac_phy_setup(struct stmma
++ 		priv->phylink_config.default_an_inband =
++ 			mdio_bus_data->default_an_inband;
++ 
++-	/* Set the platform/firmware specified interface mode. Note, phylink
++-	 * deals with the PHY interface mode, not the MAC interface mode.
+++	/* Get the PHY interface modes (at the PHY end of the link) that
+++	 * are supported by the platform.
++ 	 */
++-	__set_bit(mode, priv->phylink_config.supported_interfaces);
+++	if (priv->plat->get_interfaces)
+++		priv->plat->get_interfaces(priv, priv->plat->bsp_priv,
+++					   priv->phylink_config.supported_interfaces);
+++
+++	/* Set the platform/firmware specified interface mode if the
+++	 * supported interfaces have not already been provided using
+++	 * phy_interface as a last resort.
+++	 */
+++	if (phy_interface_empty(priv->phylink_config.supported_interfaces))
+++		__set_bit(priv->plat->phy_interface,
+++			  priv->phylink_config.supported_interfaces);
+++
++ 
++ 	/* If we have an xpcs, it defines which PHY interfaces are supported. */
++ 	if (priv->hw->xpcs)
++--- a/include/linux/stmmac.h
+++++ b/include/linux/stmmac.h
++@@ -229,6 +229,8 @@ struct plat_stmmacenet_data {
++ 	u8 tx_sched_algorithm;
++ 	struct stmmac_rxq_cfg rx_queues_cfg[MTL_MAX_RX_QUEUES];
++ 	struct stmmac_txq_cfg tx_queues_cfg[MTL_MAX_TX_QUEUES];
+++	void (*get_interfaces)(struct stmmac_priv *priv, void *bsp_priv,
+++			       unsigned long *interfaces);
++ 	void (*fix_mac_speed)(void *priv, unsigned int speed, unsigned int mode);
++ 	int (*fix_soc_reset)(void *priv, void __iomem *ioaddr);
++ 	int (*serdes_powerup)(struct net_device *ndev, void *priv);
+diff --git a/target/linux/qualcommax/patches-6.12/0912-arm64-dts-qcom-ipq5018-remove-cpufreq-scaling.patch b/target/linux/qualcommax/patches-6.12/0912-arm64-dts-qcom-ipq5018-remove-cpufreq-scaling.patch
+index f3e1644b22..8432679f66 100644
+--- a/target/linux/qualcommax/patches-6.12/0912-arm64-dts-qcom-ipq5018-remove-cpufreq-scaling.patch
++++ b/target/linux/qualcommax/patches-6.12/0912-arm64-dts-qcom-ipq5018-remove-cpufreq-scaling.patch
+@@ -13,7 +13,7 @@ Signed-off-by: Robert Senderek <robert.senderek@10g.pl>
+ 
+ --- a/arch/arm64/boot/dts/qcom/ipq5018.dtsi
+ +++ b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
+-@@ -94,12 +94,6 @@
++@@ -95,12 +95,6 @@
+  		compatible = "operating-points-v2";
+  		opp-shared;
+  
+diff --git a/target/linux/qualcommax/patches-6.12/0918-net-dsa-realtek-rtl8365mb-add-sgmii-hsgmii-support.patch b/target/linux/qualcommax/patches-6.12/0918-net-dsa-realtek-rtl8365mb-add-sgmii-hsgmii-support.patch
+new file mode 100644
+index 0000000000..dc921510bc
+--- /dev/null
++++ b/target/linux/qualcommax/patches-6.12/0918-net-dsa-realtek-rtl8365mb-add-sgmii-hsgmii-support.patch
+@@ -0,0 +1,604 @@
++From: OpenWrt
++Date: Tue, 7 Jul 2026 20:00:00 +0200
++Subject: [PATCH] net: dsa: realtek: rtl8365mb: add SGMII and HSGMII support
++
++The mainline rtl8365mb driver only configures RGMII on the extension
++interface, so switches such as the RTL8367S that are connected to the SoC
++over a (2.5G) SGMII/HSGMII link cannot be brought up (phylink_mac_config
++is a no-op for non-RGMII and SGMII/2500BASEX are not advertised).
++
++Add SGMII and HSGMII (advertised as 2500BASE-X) support for extension
++interface 1. The SerDes calibration tables are taken from the GPL-2.0
++Realtek vendor driver that already lives in OpenWrt's mediatek target
++(rtl8367c_setAsicPortExtMode). Unlike the vendor driver, no 8051 SerDes
++firmware is needed: the vendor firmware acts as a runtime babysitter for
++the SerDes, and bring-up works without it as long as the SerDes in-band
++SGMII autoneg is disabled and the link parameters are forced (verified
++on hardware: full 2.5G trunk operation, NAT throughput included).
++
++The SDS_MISC force bits (link/speed/duplex/pause) and the SGMII in-band
++autoneg disable are both mandatory - each alone leaves a link-up trunk
++that passes no traffic (verified live on AX55 hardware).
++
++This is a re-derivation of Hauke Mehrtens' 2022 netdev series, minus the
++firmware blob whose licensing blocked it back then.
++
++Needed for the TP-Link Archer AX55 v1 (IPQ5018 + RTL8367S).
++
++Rebased onto the v7.2 backports (942-xx) that split rtl8365mb.c into
++rtl8365mb.c and rtl8365mb_l2.c.
++
++Signed-off-by: OpenWrt <noreply@openwrt.org>
++---
++
++Cold-boot reliability: poll the SDS status from the CPU port MIB work: verify the
++SerDes RX is locked (SDS status 0x3D) and pulse the vendor's
++SerDes reset from the CPU port MIB poll until it does - this replaces the 8051 firmware's
++babysitter loop for the one case where it matters.
++
++--- a/drivers/net/dsa/realtek/rtl8365mb.c
+++++ b/drivers/net/dsa/realtek/rtl8365mb.c
++@@ -207,6 +207,38 @@
++ #define RTL8365MB_EXT_PORT_MODE_1000X_100FX	11
++ #define RTL8365MB_EXT_PORT_MODE_1000X		12
++ #define RTL8365MB_EXT_PORT_MODE_100FX		13
+++/* Registers used to bring up the (H)SGMII extension interface. The
+++ * RTL8365MB_MAGIC_REG/RTL8365MB_MAGIC_VALUE, RTL8365MB_CHIP_VER_REG and
+++ * RTL8365MB_CHIP_RESET_REG defines already exist above and are reused here.
+++ */
+++#define RTL8365MB_OPTION_MAGIC_REG		0x13C0
+++#define RTL8365MB_OPTION_REG			0x13C1
+++
+++#define RTL8365MB_MISC_CFG0_REG			0x130C
+++#define   RTL8365MB_MISC_CFG0_DW8051_EN_MASK	0x0020
+++
+++#define   RTL8365MB_CHIP_RESET_DW8051_MASK	0x0010
+++
+++#define RTL8365MB_DW8051_RDY_REG		0x1336
+++#define   RTL8365MB_DW8051_RDY_ACS_IROM_MASK	0x0002
+++#define   RTL8365MB_DW8051_RDY_IROM_MSB_MASK	0x0004
+++#define RTL8365MB_DW8051_IRAM_BASE		0xE000
+++
+++#define RTL8365MB_SDS_MISC_REG			0x1D11
+++#define   RTL8365MB_SDS_MISC_MAC8_SGMII_MASK	0x0040
+++#define   RTL8365MB_SDS_MISC_MAC8_HSGMII_MASK	0x0800
+++#define   RTL8365MB_SDS_MISC_SGMII_RXFC_MASK	0x4000
+++#define   RTL8365MB_SDS_MISC_SGMII_TXFC_MASK	0x2000
+++#define   RTL8365MB_SDS_MISC_SGMII_FDUP_MASK	0x0400
+++#define   RTL8365MB_SDS_MISC_SGMII_LINK_MASK	0x0200
+++#define   RTL8365MB_SDS_MISC_SGMII_SPD_MASK	0x0180
+++
+++#define RTL8365MB_SDS_INDACS_CMD_REG		0x6600
+++#define   RTL8365MB_SDS_INDACS_CMD_WRITE	0x00C0
+++#define   RTL8365MB_SDS_INDACS_CMD_READ		0x0080
+++#define RTL8365MB_SDS_INDACS_ADR_REG		0x6601
+++#define RTL8365MB_SDS_INDACS_DATA_REG		0x6602
+++
++ 
++ /* External interface mode configuration registers 0~1 */
++ #define RTL8365MB_DIGITAL_INTERFACE_SELECT_REG0		0x1305 /* EXT0,EXT1 */
++@@ -645,6 +677,16 @@ struct rtl8365mb {
++ 	struct rtl8365mb_cpu cpu;
++ 	struct mutex mib_lock;
++ 	struct rtl8365mb_port ports[RTL8365MB_MAX_NUM_PORTS];
+++	/* SerDes RX "babysitter" state (see rtl8365mb_ext_sgmii_nanny) */
+++	bool sds_nanny;
+++	int sds_port;
+++	int sds_pulses;
+++	int sds_bad_polls;
+++	u64 sds_last_crc;
+++	u64 sds_last_rx;
+++	u64 sds_last_conduit_tx;
+++	u64 sds_last_seen;
+++	phy_interface_t sds_interface;
++ };
++ 
++ static int rtl8365mb_phy_poll_busy(struct realtek_priv *priv)
++@@ -948,6 +990,7 @@ static int rtl8365mb_ext_config_rgmii(st
++ }
++ 
++ static int rtl8365mb_ext_config_forcemode(struct realtek_priv *priv, int port,
+++					  phy_interface_t interface,
++ 					  bool link, int speed, int duplex,
++ 					  bool tx_pause, bool rx_pause)
++ {
++@@ -970,7 +1013,7 @@ static int rtl8365mb_ext_config_forcemod
++ 		r_rx_pause = rx_pause ? 1 : 0;
++ 		r_tx_pause = tx_pause ? 1 : 0;
++ 
++-		if (speed == SPEED_1000) {
+++		if (speed == SPEED_2500 || speed == SPEED_1000) {
++ 			r_speed = RTL8365MB_PORT_SPEED_1000M;
++ 		} else if (speed == SPEED_100) {
++ 			r_speed = RTL8365MB_PORT_SPEED_100M;
++@@ -1015,9 +1058,416 @@ static int rtl8365mb_ext_config_forcemod
++ 	if (ret)
++ 		return ret;
++ 
+++	/*
+++	 * For the SGMII/HSGMII extension interface the digital-interface
+++	 * force register above is not enough: the SerDes MAC link (speed/
+++	 * duplex/link/pause) must also be forced in the SDS_MISC register,
+++	 * exactly as the vendor rtl8367c setAsicPortForceLinkExt() does for
+++	 * ext id 1. Without this the link is reported up but the trunk
+++	 * passes no traffic in either direction (verified live on the AX55:
+++	 * setting the LINK bit by hand instantly brought DHCP up).
+++	 */
+++	if (interface == PHY_INTERFACE_MODE_SGMII ||
+++	    interface == PHY_INTERFACE_MODE_2500BASEX) {
+++		u32 sds_mask = RTL8365MB_SDS_MISC_SGMII_RXFC_MASK |
+++			       RTL8365MB_SDS_MISC_SGMII_TXFC_MASK |
+++			       RTL8365MB_SDS_MISC_SGMII_FDUP_MASK |
+++			       RTL8365MB_SDS_MISC_SGMII_LINK_MASK |
+++			       RTL8365MB_SDS_MISC_SGMII_SPD_MASK;
+++		u32 sds_val =
+++			FIELD_PREP(RTL8365MB_SDS_MISC_SGMII_RXFC_MASK, r_rx_pause) |
+++			FIELD_PREP(RTL8365MB_SDS_MISC_SGMII_TXFC_MASK, r_tx_pause) |
+++			FIELD_PREP(RTL8365MB_SDS_MISC_SGMII_FDUP_MASK, r_duplex) |
+++			FIELD_PREP(RTL8365MB_SDS_MISC_SGMII_LINK_MASK, r_link) |
+++			FIELD_PREP(RTL8365MB_SDS_MISC_SGMII_SPD_MASK, r_speed);
+++
+++		ret = regmap_update_bits(priv->map, RTL8365MB_SDS_MISC_REG,
+++					 sds_mask, sds_val);
+++		if (ret)
+++			return ret;
+++	}
+++
+++	return 0;
+++}
+++
+++/* (H)SGMII SerDes calibration tables, taken verbatim from the GPL-2.0 Realtek
+++ * vendor driver (rtl8367c_setAsicPortExtMode); each entry is a {data, addr}
+++ * pair written through the SerDes indirect-access registers.
+++ */
+++static const u16 rtl8365mb_sds_sgmii[][2] = {
+++	{ 0x04D7, 0x0480 }, { 0xF994, 0x0481 }, { 0x21A2, 0x0482 },
+++	{ 0x6960, 0x0483 }, { 0x9728, 0x0484 }, { 0x9D85, 0x0423 },
+++	{ 0xD810, 0x0424 }, { 0x83F2, 0x002E },
+++};
+++
+++static const u16 rtl8365mb_sds_sgmii_sb[][2] = {
+++	{ 0x04D7, 0x0480 }, { 0xF994, 0x0481 }, { 0x31A2, 0x0482 },
+++	{ 0x6960, 0x0483 }, { 0x9728, 0x0484 }, { 0x9D85, 0x0423 },
+++	{ 0xD810, 0x0424 }, { 0x83F2, 0x002E },
+++};
+++
+++static const u16 rtl8365mb_sds_hsgmii_1[][2] = {
+++	{ 0x82F1, 0x0500 }, { 0xF195, 0x0501 }, { 0x31A2, 0x0502 },
+++	{ 0x796C, 0x0503 }, { 0x9728, 0x0504 }, { 0x9D85, 0x0423 },
+++	{ 0xD810, 0x0424 }, { 0x0F80, 0x0001 }, { 0x83F2, 0x002E },
+++};
+++
+++static const u16 rtl8365mb_sds_hsgmii_8[][2] = {
+++	{ 0x82F1, 0x0500 }, { 0xF995, 0x0501 }, { 0x31A2, 0x0502 },
+++	{ 0x796C, 0x0503 }, { 0x9728, 0x0504 }, { 0x9D85, 0x0423 },
+++	{ 0xD810, 0x0424 }, { 0x0F80, 0x0001 }, { 0x83F2, 0x002E },
+++};
+++
+++static const u16 rtl8365mb_sds_hsgmii_hb[][2] = {
+++	{ 0x82F0, 0x0500 }, { 0xF195, 0x0501 }, { 0x31A2, 0x0502 },
+++	{ 0x7960, 0x0503 }, { 0x9728, 0x0504 }, { 0x9D85, 0x0423 },
+++	{ 0xD810, 0x0424 }, { 0x0F80, 0x0001 }, { 0x83F2, 0x002E },
+++};
+++
+++static int rtl8365mb_sds_indacs_write(struct realtek_priv *priv, u16 data,
+++				      u16 addr)
+++{
+++	int ret;
+++
+++	ret = regmap_write(priv->map, RTL8365MB_SDS_INDACS_DATA_REG, data);
+++	if (ret)
+++		return ret;
+++
+++	ret = regmap_write(priv->map, RTL8365MB_SDS_INDACS_ADR_REG, addr);
+++	if (ret)
+++		return ret;
+++
+++	return regmap_write(priv->map, RTL8365MB_SDS_INDACS_CMD_REG,
+++			    RTL8365MB_SDS_INDACS_CMD_WRITE);
+++}
+++
+++static int rtl8365mb_sds_indacs_read(struct realtek_priv *priv, u16 addr,
+++				     u32 *data)
+++{
+++	int ret;
+++
+++	ret = regmap_write(priv->map, RTL8365MB_SDS_INDACS_ADR_REG, addr);
+++	if (ret)
+++		return ret;
+++
+++	ret = regmap_write(priv->map, RTL8365MB_SDS_INDACS_CMD_REG,
+++			   RTL8365MB_SDS_INDACS_CMD_READ);
+++	if (ret)
+++		return ret;
+++
+++	return regmap_read(priv->map, RTL8365MB_SDS_INDACS_DATA_REG, data);
+++}
+++
+++/*
+++ * Enable/disable SGMII in-band autonegotiation in the SerDes (SDS reg
+++ * 0x0002 bit 9, bit 8 = commit) - vendor rtl8367c_setSgmiiNway(). The
+++ * SerDes powers up with autoneg ENABLED; on a fixed-link trunk both MACs
+++ * are forced, the handshake never completes and the SerDes silently
+++ * drops every frame in both directions while the forced link still
+++ * reports "up". The vendor driver calls
+++ * rtk_port_sgmiiNway_set(..., DISABLED) right after forcing the
+++ * ext-port link. The 8051 is paused around the read-modify-write,
+++ * exactly as the vendor does (0x130C bit 5 = DW8051_EN).
+++ */
+++static int rtl8365mb_ext_sgmii_nway(struct realtek_priv *priv, bool enable)
+++{
+++	u32 running, val;
+++	int ret, err;
+++
+++	ret = regmap_read(priv->map, RTL8365MB_MISC_CFG0_REG, &running);
+++	if (ret)
+++		return ret;
+++	running &= RTL8365MB_MISC_CFG0_DW8051_EN_MASK;
+++
+++	if (running) {
+++		ret = regmap_update_bits(priv->map, RTL8365MB_MISC_CFG0_REG,
+++					 RTL8365MB_MISC_CFG0_DW8051_EN_MASK, 0);
+++		if (ret)
+++			return ret;
+++	}
+++
+++	ret = rtl8365mb_sds_indacs_read(priv, 0x0002, &val);
+++	if (ret)
+++		goto out;
+++
+++	if (enable)
+++		val |= 0x0200;
+++	else
+++		val &= ~0x0200;
+++	val |= 0x0100;
+++
+++	ret = rtl8365mb_sds_indacs_write(priv, val, 0x0002);
+++
+++out:
+++	if (running) {
+++		err = regmap_update_bits(priv->map, RTL8365MB_MISC_CFG0_REG,
+++					 RTL8365MB_MISC_CFG0_DW8051_EN_MASK,
+++					 RTL8365MB_MISC_CFG0_DW8051_EN_MASK);
+++		if (!ret)
+++			ret = err;
+++	}
+++
+++	return ret;
+++}
+++
+++/*
+++ * SDS link status - vendor rtl8367c_getSdsLinkStatus(): INDACS read of
+++ * SDS reg 0x003D. Bit 8 = signal detect, bit 4 = link, bit 0 = sync;
+++ * all three set = the SerDes RX is locked onto the far end's TX.
+++ */
+++#define RTL8365MB_SDS_STATUS_ADDR	0x003d
+++#define RTL8365MB_SDS_STATUS_LOCKED	0x0111
+++
+++static int rtl8365mb_ext_sgmii_rx_locked(struct realtek_priv *priv,
+++					 bool *locked)
+++{
+++	u32 val;
+++	int ret;
+++
+++	ret = rtl8365mb_sds_indacs_read(priv, RTL8365MB_SDS_STATUS_ADDR, &val);
+++	if (ret)
+++		return ret;
+++
+++	*locked = (val & RTL8365MB_SDS_STATUS_LOCKED) ==
+++		  RTL8365MB_SDS_STATUS_LOCKED;
+++	return 0;
+++}
+++
+++static int rtl8365mb_ext_config_sgmii(struct realtek_priv *priv, int port,
+++				      phy_interface_t interface)
+++{
+++	struct rtl8365mb *mb;
+++	const struct rtl8365mb_extint *extint =
+++		rtl8365mb_get_port_extint(priv, port);
+++	bool hsgmii = interface == PHY_INTERFACE_MODE_2500BASEX;
+++	const u16 (*red)[2];
+++	u32 chipver, option;
+++	size_t red_cnt;
+++	int ret;
+++	size_t i;
+++	u32 mode;
+++
+++	if (!extint)
+++		return -ENODEV;
+++
+++	/* (H)SGMII is only available on extension interface 1 */
+++	if (extint->id != 1)
+++		return -EOPNOTSUPP;
+++
+++	/*
+++	 * Clear the per-ext-port "bypass line rate" bit (reg 0x03F7). The
+++	 * vendor rtl8367c driver does this first; leaving it set brings the
+++	 * HSGMII trunk link up but stops it passing traffic.
+++	 */
+++	ret = regmap_update_bits(priv->map, 0x03F7, BIT(extint->id), 0);
+++	if (ret)
+++		return ret;
+++
+++	/* Read the chip "option" (magic-unlocked) to pick the SerDes table */
+++	ret = regmap_write(priv->map, RTL8365MB_OPTION_MAGIC_REG,
+++			   RTL8365MB_MAGIC_VALUE);
+++	if (ret)
+++		return ret;
+++	ret = regmap_read(priv->map, RTL8365MB_OPTION_REG, &option);
+++	if (ret)
+++		return ret;
+++	ret = regmap_write(priv->map, RTL8365MB_OPTION_MAGIC_REG, 0);
+++	if (ret)
+++		return ret;
+++
+++	if (!hsgmii) {
+++		red = option ? rtl8365mb_sds_sgmii_sb : rtl8365mb_sds_sgmii;
+++		red_cnt = ARRAY_SIZE(rtl8365mb_sds_sgmii);
+++	} else {
+++		/*
+++		 * HSGMII: pick the SerDes table by chip VERSION, not by the
+++		 * "option" bin. The AX55's RTL8367S reports option 1 but is
+++		 * the same 0x00A0 part, so treat every option like option 0
+++		 * (select by chipver) instead of bailing out - bailing left
+++		 * the trunk SerDes unconfigured (no table, no 8051 firmware)
+++		 * so the switch<->CPU datapath was dead in the RX direction.
+++		 */
+++		ret = regmap_write(priv->map, RTL8365MB_MAGIC_REG,
+++				   RTL8365MB_MAGIC_VALUE);
+++		if (ret)
+++			return ret;
+++		ret = regmap_read(priv->map, RTL8365MB_CHIP_VER_REG, &chipver);
+++		if (ret)
+++			return ret;
+++		ret = regmap_write(priv->map, RTL8365MB_MAGIC_REG, 0);
+++		if (ret)
+++			return ret;
+++
+++		switch ((chipver & 0x00F0) >> 4) {
+++		case 1:
+++		case 5:
+++		case 6:
+++			red = rtl8365mb_sds_hsgmii_1;
+++			break;
+++		case 8:
+++		case 9:
+++			red = rtl8365mb_sds_hsgmii_8;
+++			break;
+++		default:
+++			/* RTL8367S rev 0x00A0 (AX55) lands here */
+++			red = rtl8365mb_sds_hsgmii_hb;
+++			break;
+++		}
+++		red_cnt = ARRAY_SIZE(rtl8365mb_sds_hsgmii_hb);
+++	}
+++
+++	for (i = 0; i < red_cnt; i++) {
+++		ret = rtl8365mb_sds_indacs_write(priv, red[i][0], red[i][1]);
+++		if (ret)
+++			return ret;
+++	}
+++
+++	/* Select SGMII or HSGMII on the MAC8 SerDes mux */
+++	ret = regmap_update_bits(priv->map, RTL8365MB_SDS_MISC_REG,
+++				 RTL8365MB_SDS_MISC_MAC8_SGMII_MASK,
+++				 hsgmii ? 0 : RTL8365MB_SDS_MISC_MAC8_SGMII_MASK);
+++	if (ret)
+++		return ret;
+++	ret = regmap_update_bits(priv->map, RTL8365MB_SDS_MISC_REG,
+++				 RTL8365MB_SDS_MISC_MAC8_HSGMII_MASK,
+++				 hsgmii ? RTL8365MB_SDS_MISC_MAC8_HSGMII_MASK : 0);
+++	if (ret)
+++		return ret;
+++
+++	/* Set the extension-interface mode */
+++	mode = hsgmii ? RTL8365MB_EXT_PORT_MODE_HSGMII :
+++			RTL8365MB_EXT_PORT_MODE_SGMII;
+++	ret = regmap_update_bits(
+++		priv->map, RTL8365MB_DIGITAL_INTERFACE_SELECT_REG(extint->id),
+++		RTL8365MB_DIGITAL_INTERFACE_SELECT_MODE_MASK(extint->id),
+++		mode << RTL8365MB_DIGITAL_INTERFACE_SELECT_MODE_OFFSET(
+++			       extint->id));
+++	if (ret)
+++		return ret;
+++
+++	/* "SerDes not reset" poke from the vendor driver */
+++	ret = rtl8365mb_sds_indacs_write(priv, 0x7106, 0x0003);
+++	if (ret)
+++		return ret;
+++
+++	/*
+++	 * Kill SGMII in-band autoneg in the SerDes: both trunk ends are
+++	 * fixed-link/forced, AN would never complete and the SerDes drops
+++	 * all traffic in both directions. Done while the 8051 is running
+++	 * (pause/resume inside), exactly like the vendor flow.
+++	 */
+++	ret = rtl8365mb_ext_sgmii_nway(priv, false);
+++	if (ret)
+++		return ret;
+++
+++	mb = priv->chip_data;
+++	mb->sds_nanny = true;
+++	mb->sds_port = port;
+++	mb->sds_interface = interface;
+++
++ 	return 0;
++ }
++ 
+++/*
+++ * SerDes "babysitter", run from the CPU port's periodic MIB poll. The
+++ * vendor's 8051 firmware (which this driver does not load) polls the SDS
+++ * status in a loop and re-kicks the SerDes when it is out of sync; a
+++ * cold-booted switch occasionally comes out of calibration with a
+++ * receiver that never locks - or worse, one that reports lock on the SDS
+++ * status register while delivering nothing but FCS-error garbage (every
+++ * frame from the SoC counted as dot3StatsFCSErrors, zero good frames).
+++ * Trust the data path, not just the status bit: the MIB poll that runs
+++ * right before us already fetched the CPU port's cumulative FCS-error
+++ * and good-frame counters, so compare them against the previous poll.
+++ * On a bad poll, pulse the vendor SerDes reset (rtl8367c_sdsReset():
+++ * SDS reg 0x0000 = 0x1401, then 0x1403); if the pulses don't help,
+++ * escalate to a full SerDes re-configuration.
+++ */
+++static void rtl8365mb_ext_sgmii_nanny(struct realtek_priv *priv, int port)
+++{
+++	struct rtl8365mb *mb = priv->chip_data;
+++	struct rtnl_link_stats64 *stats = &mb->ports[port].stats;
+++	struct rtnl_link_stats64 conduit_stats;
+++	const struct net_device *conduit;
+++	u64 crc, pkts, seen, conduit_tx, tx_delta, seen_delta;
+++	bool locked, garbage, lossy = false;
+++	int ret;
+++
+++	spin_lock(&mb->ports[port].stats_lock);
+++	crc = stats->rx_crc_errors;
+++	pkts = stats->rx_packets;
+++	seen = stats->rx_packets + stats->rx_errors + stats->rx_dropped;
+++	spin_unlock(&mb->ports[port].stats_lock);
+++
+++	/* All new ingress frames on the trunk were FCS garbage */
+++	garbage = crc > mb->sds_last_crc && pkts == mb->sds_last_rx;
+++	mb->sds_last_crc = crc;
+++	mb->sds_last_rx = pkts;
+++
+++	/*
+++	 * The SerDes can also degrade to silently swallowing most frames:
+++	 * no FCS errors, no fragments, the frames just never arrive (seen
+++	 * on hardware as ~1 in 40 getting through while the SDS status
+++	 * still reports lock). Passive port counters can't see that, so
+++	 * compare against the other end of the trunk: everything the DSA
+++	 * conduit transmits must show up on the CPU port as *something*
+++	 * (a good frame or a counted error).
+++	 */
+++	conduit = dsa_to_port(&priv->ds, port)->conduit;
+++	if (conduit) {
+++		dev_get_stats((struct net_device *)conduit, &conduit_stats);
+++		conduit_tx = conduit_stats.tx_packets;
+++		tx_delta = conduit_tx - mb->sds_last_conduit_tx;
+++		seen_delta = seen - mb->sds_last_seen;
+++		if (mb->sds_last_conduit_tx && tx_delta >= 16 &&
+++		    seen_delta * 4 < tx_delta)
+++			lossy = true;
+++		mb->sds_last_conduit_tx = conduit_tx;
+++		mb->sds_last_seen = seen;
+++	}
+++
+++	ret = rtl8365mb_ext_sgmii_rx_locked(priv, &locked);
+++	if (ret)
+++		return;
+++
+++	if (locked && !garbage && !lossy) {
+++		if (mb->sds_pulses || mb->sds_bad_polls)
+++			dev_info(priv->dev,
+++				 "port %d SerDes healthy after %d reset pulse(s)\n",
+++				 port, mb->sds_pulses);
+++		mb->sds_pulses = 0;
+++		mb->sds_bad_polls = 0;
+++		return;
+++	}
+++
+++	if ((garbage || lossy) && ++mb->sds_bad_polls >= 3) {
+++		dev_warn(priv->dev,
+++			 "port %d SerDes %s despite %s - re-running SerDes config\n",
+++			 port, garbage ? "delivers FCS garbage" : "silently drops frames",
+++			 locked ? "reporting lock" : "reset pulses");
+++		ret = rtl8365mb_ext_config_sgmii(priv, port,
+++						 mb->sds_interface);
+++		if (ret)
+++			dev_err(priv->dev,
+++				"port %d SerDes re-config failed: %pe\n",
+++				port, ERR_PTR(ret));
+++		mb->sds_bad_polls = 0;
+++		mb->sds_pulses = 0;
+++		return;
+++	}
+++
+++	ret = rtl8365mb_sds_indacs_write(priv, 0x1401, 0x0000);
+++	if (!ret)
+++		ret = rtl8365mb_sds_indacs_write(priv, 0x1403, 0x0000);
+++	if (ret)
+++		return;
+++
+++	if (++mb->sds_pulses == 10)
+++		dev_warn(priv->dev,
+++			 "port %d SerDes RX still not locked after %d reset pulses\n",
+++			 port, mb->sds_pulses);
+++}
+++
++ static void rtl8365mb_phylink_get_caps(struct dsa_switch *ds, int port,
++ 				       struct phylink_config *config)
++ {
++@@ -1046,6 +1496,15 @@ static void rtl8365mb_phylink_get_caps(s
++ 
++ 	if (extint->supported_interfaces & RTL8365MB_PHY_INTERFACE_MODE_RGMII)
++ 		phy_interface_set_rgmii(config->supported_interfaces);
+++	if (extint->supported_interfaces & RTL8365MB_PHY_INTERFACE_MODE_SGMII)
+++		__set_bit(PHY_INTERFACE_MODE_SGMII,
+++			  config->supported_interfaces);
+++
+++	if (extint->supported_interfaces & RTL8365MB_PHY_INTERFACE_MODE_HSGMII) {
+++		__set_bit(PHY_INTERFACE_MODE_2500BASEX,
+++			  config->supported_interfaces);
+++		config->mac_capabilities |= MAC_2500FD;
+++	}
++ }
++ 
++ static void rtl8365mb_phylink_mac_config(struct phylink_config *config,
++@@ -1073,6 +1532,15 @@ static void rtl8365mb_phylink_mac_config
++ 		return;
++ 	}
++ 
+++	if (state->interface == PHY_INTERFACE_MODE_SGMII ||
+++	    state->interface == PHY_INTERFACE_MODE_2500BASEX) {
+++		ret = rtl8365mb_ext_config_sgmii(priv, port, state->interface);
+++		if (ret)
+++			dev_err(priv->dev,
+++				"failed to configure SGMII mode on port %d: %d\n",
+++				port, ret);
+++		return;
+++	}
++ 	/* TODO: Implement MII and RMII modes, which the RTL8365MB-VC also
++ 	 * supports
++ 	 */
++@@ -1093,8 +1561,11 @@ static void rtl8365mb_phylink_mac_link_d
++ 	p = &mb->ports[port];
++ 	cancel_delayed_work_sync(&p->mib_work);
++ 
++-	if (phy_interface_mode_is_rgmii(interface)) {
++-		ret = rtl8365mb_ext_config_forcemode(priv, port, false, 0, 0,
+++	if (phy_interface_mode_is_rgmii(interface) ||
+++	    interface == PHY_INTERFACE_MODE_SGMII ||
+++	    interface == PHY_INTERFACE_MODE_2500BASEX) {
+++		ret = rtl8365mb_ext_config_forcemode(priv, port, interface,
+++						     false, 0, 0,
++ 						     false, false);
++ 		if (ret)
++ 			dev_err(priv->dev,
++@@ -1123,8 +1594,11 @@ static void rtl8365mb_phylink_mac_link_u
++ 	p = &mb->ports[port];
++ 	schedule_delayed_work(&p->mib_work, 0);
++ 
++-	if (phy_interface_mode_is_rgmii(interface)) {
++-		ret = rtl8365mb_ext_config_forcemode(priv, port, true, speed,
+++	if (phy_interface_mode_is_rgmii(interface) ||
+++	    interface == PHY_INTERFACE_MODE_SGMII ||
+++	    interface == PHY_INTERFACE_MODE_2500BASEX) {
+++		ret = rtl8365mb_ext_config_forcemode(priv, port, interface,
+++						     true, speed,
++ 						     duplex, tx_pause,
++ 						     rx_pause);
++ 		if (ret)
++@@ -1515,9 +1989,13 @@ static void rtl8365mb_stats_poll(struct
++ 						struct rtl8365mb_port,
++ 						mib_work);
++ 	struct realtek_priv *priv = p->priv;
+++	struct rtl8365mb *mb = priv->chip_data;
++ 
++ 	rtl8365mb_stats_update(priv, p->index);
++ 
+++	if (mb->sds_nanny && p->index == mb->sds_port)
+++		rtl8365mb_ext_sgmii_nanny(priv, p->index);
+++
++ 	schedule_delayed_work(&p->mib_work, RTL8365MB_STATS_INTERVAL_JIFFIES);
++ }
++ 
+diff --git a/target/linux/qualcommax/patches-6.12/0920-clk-add-clk_hw_recalc_rate-to-trigger-HW-clk-rate-re.patch b/target/linux/qualcommax/patches-6.12/0920-clk-add-clk_hw_recalc_rate-to-trigger-HW-clk-rate-re.patch
+new file mode 100644
+index 0000000000..73444396f8
+--- /dev/null
++++ b/target/linux/qualcommax/patches-6.12/0920-clk-add-clk_hw_recalc_rate-to-trigger-HW-clk-rate-re.patch
+@@ -0,0 +1,99 @@
++From 49ae1f081626f1a8c91b283d06868a178a0a2e5a Mon Sep 17 00:00:00 2001
++From: Christian Marangi <ansuelsmth@gmail.com>
++Date: Tue, 17 Mar 2026 17:41:45 +0100
++Subject: [PATCH] clk: add clk_hw_recalc_rate() to trigger HW clk rate
++ recalculation
++
++There is currently a latent problem with HW clk that only expose a
++.recalc_rate OP and doesn't have a .set_rate() and also have the
++CLK_GET_RATE_NOCACHE flag set. In such case the rate in clk core is
++parsed only (and set) only at init and when the full clk_set_rate()
++is called. In every other case .recalc_rate() is never called.
++
++It's also possible that an HW clk of this type, initially report 0 as rate
++as the register are still not configured and the HW clk effectively doesn't
++return any rate.
++
++This gets especially problematic when a clock provider use such clk as a
++parent and require the rate for parent selection for the final rate
++calculation.
++
++In such case, since the HW clk rate is never updated after init, it's still
++0 and cause problems with any other HW clk that use .determine_rate() or
++.round_rate() and search for the closest rate using clk_hw_get_rate() on
++the parents.
++
++This doesn't happen if the full clk_get_rate() is used instead as it will
++check if CLK_GET_RATE_NOCACHE is set and recalculate the rate accordingly.
++
++Updating the clk_hw_get_rate() to align to what clk_get_rate() does is not
++possible as it should be lockless and might cause problems in any user of
++clk_hw_get_rate().
++
++A more safe approach is the introduction of a direct function that triggers
++the HW clk rate recalculation, clk_hw_recalc_rate().
++
++Any driver that implement an HW clk that entirely depends on some register
++to configure the rate (that are externally configured) and have only
++.recalc_rate() and set CLK_GET_RATE_NOCACHE (aka the case where the HW clk
++rate actually change and depends on the external register configuration)
++will have to call clk_hw_recalc_rate() on the HW clk after changing the
++register configuration to sync the CCF with the new rate for the HW clk.
++
++Example:
++
++ - All register zero -> HW clk rate = 0
++ - PCS configure USXGMII mode -> HW clk rate = 0
++ - PCS call clk_hw_recalc_rate() -> HW clk rate = 312MHz
++ - Port goes UP
++ - PCS/MAC scale the PHY port clock correctly by having
++   the correct reference clock as parent (instead of 0)
++
++Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
++---
++ drivers/clk/clk.c            | 23 +++++++++++++++++++++++
++ include/linux/clk-provider.h |  1 +
++ 2 files changed, 24 insertions(+)
++
++--- a/drivers/clk/clk.c
+++++ b/drivers/clk/clk.c
++@@ -1990,6 +1990,29 @@ static unsigned long clk_core_get_rate_r
++ }
++ 
++ /**
+++ * clk_hw_recalc_rate - trigger rate recalculation for clk_hw
+++ * @hw: clk_hw associated with the clk to recalculate for
+++ *
+++ * Use clk_hw_recalc_rate() for the hw clk where the rate
+++ * entirely depend on register configuration and doesn't have
+++ * a .set_rate() OP. In such case, after modifying the register
+++ * that would change the rate for the hw clk, call
+++ * clk_hw_recalc_rate() to sync the CCF with the new clk rate.
+++ */
+++void clk_hw_recalc_rate(const struct clk_hw *hw)
+++{
+++	struct clk_core *core = hw->core;
+++
+++	if (!core || !(core->flags & CLK_GET_RATE_NOCACHE))
+++		return;
+++
+++	clk_prepare_lock();
+++	__clk_recalc_rates(core, false, 0);
+++	clk_prepare_unlock();
+++}
+++EXPORT_SYMBOL_GPL(clk_hw_recalc_rate);
+++
+++/**
++  * clk_get_rate - return the rate of clk
++  * @clk: the clk whose rate is being returned
++  *
++--- a/include/linux/clk-provider.h
+++++ b/include/linux/clk-provider.h
++@@ -1355,6 +1355,7 @@ int clk_hw_get_parent_index(struct clk_h
++ int clk_hw_set_parent(struct clk_hw *hw, struct clk_hw *new_parent);
++ unsigned int __clk_get_enable_count(struct clk *clk);
++ unsigned long clk_hw_get_rate(const struct clk_hw *hw);
+++void clk_hw_recalc_rate(const struct clk_hw *hw);
++ unsigned long clk_hw_get_flags(const struct clk_hw *hw);
++ #define clk_hw_can_set_rate_parent(hw) \
++ 	(clk_hw_get_flags((hw)) & CLK_SET_RATE_PARENT)
+diff --git a/target/linux/qualcommax/patches-6.12/0921-usb-dwc3-qcom-tcsr-phy-mux.patch b/target/linux/qualcommax/patches-6.12/0921-usb-dwc3-qcom-tcsr-phy-mux.patch
+new file mode 100644
+index 0000000000..75767c72ff
+--- /dev/null
++++ b/target/linux/qualcommax/patches-6.12/0921-usb-dwc3-qcom-tcsr-phy-mux.patch
+@@ -0,0 +1,73 @@
++From: OpenWrt
++Date: Mon, 6 Jul 2026 00:00:00 +0200
++Subject: [PATCH] usb: dwc3: qcom: support the TCSR USB phy mux (IPQ5018)
++
++On IPQ5018 the USB pads sit behind a PHY mux controlled from a TCSR
++register. The vendor (QSDK) dwc3-qcom driver selects the USB position by
++writing 1 there ("usb phy mux sel", qcom,phy-mux-regs); without it, on
++boards whose bootloader never touches USB (e.g. TP-Link Archer AX55 v1),
++the port stays muxed away and no device ever enumerates. Port the vendor
++property/behaviour as an optional DT hook.
++
++Signed-off-by: OpenWrt <noreply@openwrt.org>
++---
++--- a/drivers/usb/dwc3/dwc3-qcom.c
+++++ b/drivers/usb/dwc3/dwc3-qcom.c
++@@ -22,6 +22,8 @@
++ #include <linux/iopoll.h>
++ #include <linux/usb/hcd.h>
++ #include <linux/usb.h>
+++#include <linux/mfd/syscon.h>
+++#include <linux/regmap.h>
++ #include "core.h"
++ 
++ /* USB QSCRATCH Hardware registers */
++@@ -730,6 +732,37 @@ static int dwc3_qcom_of_register_core(st
++ 	return ret;
++ }
++ 
+++/*
+++ * Some IPQ SoCs (e.g. IPQ5018) route the USB pads through a PHY mux
+++ * controlled from a TCSR register; the bootloader does not necessarily
+++ * select the USB position. Optional "qcom,phy-mux-regs" = <&tcsr offset>
+++ * points at it; the vendor driver writes 1 ("usb phy mux sel") there.
+++ */
+++static int dwc3_qcom_setup_phy_mux(struct dwc3_qcom *qcom)
+++{
+++	struct of_phandle_args args;
+++	struct regmap *map;
+++	int ret;
+++
+++	ret = of_parse_phandle_with_fixed_args(qcom->dev->of_node,
+++					       "qcom,phy-mux-regs", 1, 0,
+++					       &args);
+++	if (ret)
+++		return 0;	/* optional */
+++
+++	map = syscon_node_to_regmap(args.np);
+++	of_node_put(args.np);
+++	if (IS_ERR(map))
+++		return dev_err_probe(qcom->dev, PTR_ERR(map),
+++				     "failed to map phy mux regs\n");
+++
+++	ret = regmap_write(map, args.args[0], 0x1);
+++	if (ret)
+++		dev_err(qcom->dev, "failed to select USB phy mux: %d\n", ret);
+++
+++	return ret;
+++}
+++
++ static int dwc3_qcom_probe(struct platform_device *pdev)
++ {
++ 	struct device_node	*np = pdev->dev.of_node;
++@@ -793,6 +826,10 @@ static int dwc3_qcom_probe(struct platfo
++ 	if (ignore_pipe_clk)
++ 		dwc3_qcom_select_utmi_clk(qcom);
++ 
+++	ret = dwc3_qcom_setup_phy_mux(qcom);
+++	if (ret)
+++		goto clk_disable;
+++
++ 	ret = dwc3_qcom_of_register_core(pdev);
++ 	if (ret) {
++ 		dev_err(dev, "failed to register DWC3 Core, err=%d\n", ret);
+diff --git a/target/linux/qualcommax/patches-6.12/0922-phy-qcom-add-ipq5018-usb-ss-phy.patch b/target/linux/qualcommax/patches-6.12/0922-phy-qcom-add-ipq5018-usb-ss-phy.patch
+new file mode 100644
+index 0000000000..2180e11131
+--- /dev/null
++++ b/target/linux/qualcommax/patches-6.12/0922-phy-qcom-add-ipq5018-usb-ss-phy.patch
+@@ -0,0 +1,200 @@
++From: OpenWrt
++Date: Tue, 7 Jul 2026 14:00:00 +0200
++Subject: [PATCH] phy: qcom: add IPQ5018 USB SuperSpeed uni PHY driver
++
++Port of the QSDK phy-qca-uniphy.c driver (qca,ipq5018-uni-ssphy):
++enable the clocks, pulse the PHY POR reset (GCC_USB0_PHY_BCR), wait
++for the fuse autoload, then program five SSCG (spread spectrum)
++registers with fixed values.
++
++Crucially, the phy register file at 0x5d000 responds ONLY when the
++usb0 aux and lfps clocks run as well - with either gated, even a read
++hangs the AHB bus (CPU stall, watchdog cannot fire since the other
++core keeps petting it). The vendor driver only takes pipe+cfg_ahb
++because the vendor dwc3 node's clock list carries aux/lfps and the
++controller enables them before phy init; this driver takes all four
++so it cannot be broken by controller clock ordering.
++
++Without this PHY initialized, USB3 devices see phantom terminations
++on the dead SS pairs, keep retrying SS link training and never fall
++back to USB2 - the port appears completely dead for them.
++
++Signed-off-by: OpenWrt <noreply@openwrt.org>
++---
++--- a/drivers/phy/qualcomm/Kconfig
+++++ b/drivers/phy/qualcomm/Kconfig
++@@ -154,6 +154,15 @@ config PHY_QCOM_M31_USB
++ 	  management. This driver is required even for peripheral only or
++ 	  host only mode configurations.
++ 
+++config PHY_QCOM_IPQ5018_USB_SS
+++	tristate "Qualcomm IPQ5018 USB SS PHY driver support"
+++	depends on USB && (ARCH_QCOM || COMPILE_TEST)
+++	select GENERIC_PHY
+++	help
+++	  Enable this to support the SuperSpeed "uni" PHY transceiver
+++	  that is paired with the DWC3 USB core on the Qualcomm IPQ5018
+++	  SoC.
+++
++ config PHY_QCOM_UNIPHY_PCIE_28LP
++ 	bool "PCIE UNIPHY 28LP PHY driver"
++ 	depends on ARCH_QCOM
++--- a/drivers/phy/qualcomm/Makefile
+++++ b/drivers/phy/qualcomm/Makefile
++@@ -4,6 +4,7 @@ obj-$(CONFIG_PHY_QCOM_APQ8064_SATA)	+= p
++ obj-$(CONFIG_PHY_QCOM_EDP)		+= phy-qcom-edp.o
++ obj-$(CONFIG_PHY_QCOM_IPQ4019_USB)	+= phy-qcom-ipq4019-usb.o
++ obj-$(CONFIG_PHY_QCOM_IPQ806X_SATA)	+= phy-qcom-ipq806x-sata.o
+++obj-$(CONFIG_PHY_QCOM_IPQ5018_USB_SS)	+= phy-qcom-ipq5018-usb-ss.o
++ obj-$(CONFIG_PHY_QCOM_M31_USB)		+= phy-qcom-m31.o
++ obj-$(CONFIG_PHY_QCOM_PCIE2)		+= phy-qcom-pcie2.o
++ 
++--- /dev/null
+++++ b/drivers/phy/qualcomm/phy-qcom-ipq5018-usb-ss.c
++@@ -0,0 +1,146 @@
+++// SPDX-License-Identifier: GPL-2.0-only
+++/*
+++ * Qualcomm IPQ5018 USB SuperSpeed "uni" PHY driver
+++ *
+++ * Minimal port of the QSDK phy-qca-uniphy.c (qca,ipq5018-uni-ssphy
+++ * branch): pulse the PHY POR reset, enable the clocks, wait for the
+++ * fuse autoload, then program the SSCG (spread spectrum) registers.
+++ */
+++
+++#include <linux/clk.h>
+++#include <linux/delay.h>
+++#include <linux/io.h>
+++#include <linux/module.h>
+++#include <linux/of.h>
+++#include <linux/phy/phy.h>
+++#include <linux/platform_device.h>
+++#include <linux/reset.h>
+++
+++#define SSCG_CTRL_REG_1		0x9c
+++#define SSCG_CTRL_REG_2		0xa0
+++#define SSCG_CTRL_REG_3		0xa4
+++#define SSCG_CTRL_REG_4		0xa8
+++#define SSCG_CTRL_REG_5		0xac
+++
+++/* time (us) the PHY takes to autoload its fuse calibration after POR */
+++#define PHY_AUTOLOAD_DELAY_US	35
+++
+++#define NUM_CLKS	4
+++
+++struct ipq5018_usb_ss_phy {
+++	void __iomem *base;
+++	struct clk_bulk_data clks[NUM_CLKS];
+++	struct reset_control *por_rst;
+++};
+++
+++static void ssphy_write(struct ipq5018_usb_ss_phy *phy, u32 off, u32 val)
+++{
+++	writel(val, phy->base + off);
+++	udelay(100);
+++}
+++
+++static int ipq5018_usb_ss_phy_init(struct phy *_phy)
+++{
+++	struct ipq5018_usb_ss_phy *phy = phy_get_drvdata(_phy);
+++	int ret;
+++
+++	/*
+++	 * All four clocks must run before the register file responds -
+++	 * with aux/lfps gated, even a read of the SSCG registers hangs
+++	 * the bus (found the hard way). The vendor driver gets away with
+++	 * enabling only pipe+cfg_ahb because the vendor dwc3 node clock
+++	 * list (which the controller enables before the phy init) also
+++	 * carries aux and lfps.
+++	 */
+++	ret = clk_bulk_prepare_enable(NUM_CLKS, phy->clks);
+++	if (ret)
+++		return ret;
+++
+++	reset_control_assert(phy->por_rst);
+++	usleep_range(100, 200);
+++	reset_control_deassert(phy->por_rst);
+++
+++	udelay(PHY_AUTOLOAD_DELAY_US);
+++
+++	ssphy_write(phy, SSCG_CTRL_REG_4, 0x1cb9);
+++	ssphy_write(phy, SSCG_CTRL_REG_5, 0x023a);
+++	ssphy_write(phy, SSCG_CTRL_REG_3, 0xd360);
+++	ssphy_write(phy, SSCG_CTRL_REG_1, 0x1);
+++	ssphy_write(phy, SSCG_CTRL_REG_2, 0xeb);
+++
+++	return 0;
+++}
+++
+++static int ipq5018_usb_ss_phy_exit(struct phy *_phy)
+++{
+++	struct ipq5018_usb_ss_phy *phy = phy_get_drvdata(_phy);
+++
+++	clk_bulk_disable_unprepare(NUM_CLKS, phy->clks);
+++	reset_control_assert(phy->por_rst);
+++
+++	return 0;
+++}
+++
+++static const struct phy_ops ipq5018_usb_ss_phy_ops = {
+++	.init = ipq5018_usb_ss_phy_init,
+++	.exit = ipq5018_usb_ss_phy_exit,
+++	.owner = THIS_MODULE,
+++};
+++
+++static int ipq5018_usb_ss_phy_probe(struct platform_device *pdev)
+++{
+++	struct device *dev = &pdev->dev;
+++	struct ipq5018_usb_ss_phy *phy;
+++	struct phy_provider *provider;
+++	struct phy *generic_phy;
+++	int ret;
+++
+++	phy = devm_kzalloc(dev, sizeof(*phy), GFP_KERNEL);
+++	if (!phy)
+++		return -ENOMEM;
+++
+++	phy->base = devm_platform_ioremap_resource(pdev, 0);
+++	if (IS_ERR(phy->base))
+++		return PTR_ERR(phy->base);
+++
+++	phy->por_rst = devm_reset_control_get_exclusive(dev, NULL);
+++	if (IS_ERR(phy->por_rst))
+++		return dev_err_probe(dev, PTR_ERR(phy->por_rst),
+++				     "failed to get POR reset\n");
+++
+++	phy->clks[0].id = "pipe";
+++	phy->clks[1].id = "cfg_ahb";
+++	phy->clks[2].id = "aux";
+++	phy->clks[3].id = "lfps";
+++	ret = devm_clk_bulk_get(dev, NUM_CLKS, phy->clks);
+++	if (ret)
+++		return dev_err_probe(dev, ret, "failed to get clocks\n");
+++
+++	generic_phy = devm_phy_create(dev, NULL, &ipq5018_usb_ss_phy_ops);
+++	if (IS_ERR(generic_phy))
+++		return PTR_ERR(generic_phy);
+++
+++	phy_set_drvdata(generic_phy, phy);
+++
+++	provider = devm_of_phy_provider_register(dev, of_phy_simple_xlate);
+++
+++	return PTR_ERR_OR_ZERO(provider);
+++}
+++
+++static const struct of_device_id ipq5018_usb_ss_phy_of_match[] = {
+++	{ .compatible = "qcom,ipq5018-usb-ssphy" },
+++	{ }
+++};
+++MODULE_DEVICE_TABLE(of, ipq5018_usb_ss_phy_of_match);
+++
+++static struct platform_driver ipq5018_usb_ss_phy_driver = {
+++	.probe = ipq5018_usb_ss_phy_probe,
+++	.driver = {
+++		.name = "ipq5018-usb-ssphy",
+++		.of_match_table = ipq5018_usb_ss_phy_of_match,
+++	},
+++};
+++module_platform_driver(ipq5018_usb_ss_phy_driver);
+++
+++MODULE_DESCRIPTION("Qualcomm IPQ5018 USB SS uni PHY driver");
+++MODULE_LICENSE("GPL");
+diff --git a/target/linux/qualcommax/patches-6.12/0923-usb-dwc3-qcom-select-phy-mux-before-reset.patch b/target/linux/qualcommax/patches-6.12/0923-usb-dwc3-qcom-select-phy-mux-before-reset.patch
+new file mode 100644
+index 0000000000..6aeb6ad14b
+--- /dev/null
++++ b/target/linux/qualcommax/patches-6.12/0923-usb-dwc3-qcom-select-phy-mux-before-reset.patch
+@@ -0,0 +1,52 @@
++From: Stanislaw Pal <kuncy7@gmail.com>
++Subject: [PATCH] usb: dwc3: qcom: select the phy mux before the reset
++
++On IPQ5018 the USB pads are shared with PCIe through a mux in TCSR.
++The selection was made near the end of probe, after the controller had
++already been through its reset and after the clocks were up.
++
++The vendor driver (QSDK dwc3-qcom.c, qcom,multiplexed-phy) writes the
++selection as the very first thing in probe, ahead of the usb30 master
++reset and the clock setup. Match that: the SuperSpeed pads are muxed
++away for the whole reset otherwise, and the link never leaves
++Rx.Detect. USB2 does not go through this mux, which is why high speed
++worked throughout.
++
++Measured on a TP-Link Archer AX55 v1: with this change a USB3 stick
++enumerates at SuperSpeed and hdparm reports 112-116 MB/s, against
++~100 MB/s under the vendor firmware.
++
++Signed-off-by: Stanislaw Pal <kuncy7@gmail.com>
++---
++--- a/drivers/usb/dwc3/dwc3-qcom.c
+++++ b/drivers/usb/dwc3/dwc3-qcom.c
++@@ -779,6 +779,18 @@
++ 	platform_set_drvdata(pdev, qcom);
++ 	qcom->dev = &pdev->dev;
++ 
+++	/*
+++	 * Select the USB position of the phy mux before anything comes out
+++	 * of reset. The vendor driver does this as the first thing in probe,
+++	 * ahead of the controller reset and the clocks; selecting it later
+++	 * leaves the SuperSpeed pads muxed away while the controller resets,
+++	 * and the SS link then never leaves Rx.Detect (USB2 is unaffected,
+++	 * it does not go through this mux).
+++	 */
+++	ret = dwc3_qcom_setup_phy_mux(qcom);
+++	if (ret)
+++		return ret;
+++
++ 	qcom->resets = devm_reset_control_array_get_optional_exclusive(dev);
++ 	if (IS_ERR(qcom->resets)) {
++ 		return dev_err_probe(&pdev->dev, PTR_ERR(qcom->resets),
++@@ -826,10 +838,6 @@
++ 	if (ignore_pipe_clk)
++ 		dwc3_qcom_select_utmi_clk(qcom);
++ 
++-	ret = dwc3_qcom_setup_phy_mux(qcom);
++-	if (ret)
++-		goto clk_disable;
++-
++ 	ret = dwc3_qcom_of_register_core(pdev);
++ 	if (ret) {
++ 		dev_err(dev, "failed to register DWC3 Core, err=%d\n", ret);
+diff --git a/target/linux/qualcommax/patches-6.12/0951-net-pcs-add-uniphy-pcs.patch b/target/linux/qualcommax/patches-6.12/0951-net-pcs-add-uniphy-pcs.patch
+new file mode 100644
+index 0000000000..05ab18902e
+--- /dev/null
++++ b/target/linux/qualcommax/patches-6.12/0951-net-pcs-add-uniphy-pcs.patch
+@@ -0,0 +1,23 @@
++--- a/drivers/net/pcs/Kconfig
+++++ b/drivers/net/pcs/Kconfig
++@@ -51,4 +51,13 @@ config PCS_RZN1_MIIC
++ 	  on RZ/N1 SoCs. This PCS converts MII to RMII/RGMII or can be set in
++ 	  pass-through mode for MII.
++ 
+++config PCS_QCA_UNIPHY
+++	tristate "Qualcomm 802.11ax UNIPHY PCS driver"
+++	select PHYLINK
+++	select FWNODE_PCS
+++	help
+++	  PCS driver for the UNIPHY SerDes blocks in Qualcomm 802.11ax SoCs.
+++	  Provides PSGMII and SGMII interface modes and registers the UNIPHY
+++	  PLL clock providers needed for port clock muxing.
+++
++ endmenu
++--- a/drivers/net/pcs/Makefile
+++++ b/drivers/net/pcs/Makefile
++@@ -10,3 +10,4 @@ obj-$(CONFIG_PCS_LYNX)		+= pcs-lynx.o
++ obj-$(CONFIG_PCS_MTK_LYNXI)	+= pcs-mtk-lynxi.o
++ obj-$(CONFIG_PCS_RZN1_MIIC)	+= pcs-rzn1-miic.o
++ obj-$(CONFIG_PCS_MTK_USXGMII)	+= pcs-mtk-usxgmii.o
+++obj-$(CONFIG_PCS_QCA_UNIPHY)	+= pcs-qca-uniphy.o
+diff --git a/target/linux/qualcommax/patches-6.12/0954-net-stmmac-Introduce-Qualcomm-IPQ5018-DWMAC-driver.patch b/target/linux/qualcommax/patches-6.12/0954-net-stmmac-Introduce-Qualcomm-IPQ5018-DWMAC-driver.patch
+new file mode 100644
+index 0000000000..f0cf29a1b0
+--- /dev/null
++++ b/target/linux/qualcommax/patches-6.12/0954-net-stmmac-Introduce-Qualcomm-IPQ5018-DWMAC-driver.patch
+@@ -0,0 +1,27 @@
++--- a/drivers/net/ethernet/stmicro/stmmac/Kconfig
+++++ b/drivers/net/ethernet/stmicro/stmmac/Kconfig
++@@ -78,6 +78,14 @@ config DWMAC_INGENIC
++ 	  device driver. This driver is used on for the Ingenic SoCs
++ 	  MAC ethernet controller.
++ 
+++config DWMAC_IPQ5018
+++	tristate "Qualcomm IPQ5018 DWMAC driver"
+++	depends on OF && (ARCH_QCOM || COMPILE_TEST)
+++	help
+++	  Support for ethernet controller on Qualcomm IPQ5018 SoCs.
+++
+++	  This selects the IPQ5018 SoC glue layer support for the stmmac driver.
+++
++ config DWMAC_IPQ806X
++ 	tristate "QCA IPQ806x DWMAC support"
++ 	default ARCH_QCOM
++--- a/drivers/net/ethernet/stmicro/stmmac/Makefile
+++++ b/drivers/net/ethernet/stmicro/stmmac/Makefile
++@@ -15,6 +15,7 @@ stmmac-$(CONFIG_STMMAC_SELFTESTS) += stm
++ obj-$(CONFIG_STMMAC_PLATFORM)	+= stmmac-platform.o
++ obj-$(CONFIG_DWMAC_ANARION)	+= dwmac-anarion.o
++ obj-$(CONFIG_DWMAC_INGENIC)	+= dwmac-ingenic.o
+++obj-$(CONFIG_DWMAC_IPQ5018)	+= dwmac-ipq5018.o
++ obj-$(CONFIG_DWMAC_IPQ806X)	+= dwmac-ipq806x.o
++ obj-$(CONFIG_DWMAC_LPC18XX)	+= dwmac-lpc18xx.o
++ obj-$(CONFIG_DWMAC_MEDIATEK)	+= dwmac-mediatek.o

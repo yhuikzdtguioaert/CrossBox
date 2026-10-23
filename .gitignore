@@ -2,8 +2,9 @@
 /.scripts/
 /.cache/
 
-# External source checkouts
-/third_party/
+# Generated files inside vendored dependencies
+/third_party/openwrt/package/crossbox
+/third_party/tplink-firmware-tools/bin/
 
 # Local notes
 /docs/
