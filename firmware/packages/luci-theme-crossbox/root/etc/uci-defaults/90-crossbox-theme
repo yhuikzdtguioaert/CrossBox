@@ -1,0 +1,7 @@
+#!/bin/sh
+uci -q batch <<'EOF'
+set luci.themes.CrossBox='/luci-static/crossbox'
+set luci.main.mediaurlbase='/luci-static/crossbox'
+commit luci
+EOF
+exit 0

@@ -1,0 +1,106 @@
+#!/bin/sh
+set -eu
+umask 077
+lock=/var/lock/crossbox-vpn
+mkdir "$lock" 2>/dev/null || { echo 'VPN configuration is busy'; exit 1; }
+stage=$(mktemp -d /tmp/crossbox-vpn.XXXXXX)
+testpid=
+runtime_changed=0
+committed=0
+restore_previous() {
+    /etc/init.d/crossbox-vpn stop
+    for file in vpn.json config.json proxies.txt; do
+        if [ -f "$stage/previous/$file" ]; then cp "$stage/previous/$file" "/etc/crossbox/$file"; else rm -f "/etc/crossbox/$file"; fi
+    done
+    if [ "$(jsonfilter -i /etc/crossbox/vpn.json -e '@.enabled' 2>/dev/null || :)" = true ]; then
+        /etc/init.d/crossbox-vpn enable
+        /etc/init.d/crossbox-vpn start
+    else
+        /etc/init.d/crossbox-vpn disable
+    fi
+}
+cleanup() {
+    [ -z "$testpid" ] || { kill "$testpid" 2>/dev/null || :; wait "$testpid" 2>/dev/null || :; }
+    if [ "$runtime_changed" = 1 ] && [ "$committed" = 0 ]; then restore_previous; fi
+    rm -rf "$stage"
+    rmdir "$lock"
+}
+trap cleanup EXIT INT TERM
+request=/etc/crossbox/vpn-request.json
+[ -s "$request" ] || { echo 'Missing configuration request'; exit 1; }
+mkdir -p /etc/crossbox
+mkdir "$stage/previous"
+for file in vpn.json config.json proxies.txt; do
+    [ ! -f "/etc/crossbox/$file" ] || cp "/etc/crossbox/$file" "$stage/previous/"
+done
+if [ ! -s /etc/crossbox/controller.secret ]; then
+    cat /proc/sys/kernel/random/uuid > /etc/crossbox/controller.secret
+fi
+/usr/bin/ucode /usr/libexec/crossbox/vpn-render.uc "$request" "$stage" check
+enabled=$(jsonfilter -i "$request" -e '@.enabled')
+# Stopping must work offline, including an expired or malformed subscription.
+if [ "$enabled" != true ]; then
+    cp "$request" /etc/crossbox/vpn.json.new
+    mv /etc/crossbox/vpn.json.new /etc/crossbox/vpn.json
+    /etc/init.d/crossbox-vpn stop
+    /etc/init.d/crossbox-vpn disable
+    rm -f /tmp/crossbox-vpn.error
+    echo 'VPN stopped; configuration saved'
+    exit 0
+fi
+subscription=$(jsonfilter -i "$request" -e '@.subscription')
+if [ -n "$subscription" ]; then
+    /usr/bin/ucode /usr/libexec/crossbox/subscription-fetch.uc "$request" "$stage/raw.txt"
+else
+    cp "$stage/proxies.txt" "$stage/raw.txt"
+fi
+if [ -s "$stage/raw.txt" ]; then
+    /usr/bin/ucode /usr/libexec/crossbox/provider-normalize.uc "$stage/raw.txt" "$stage/proxies.txt"
+fi
+if [ "$enabled" = true ]; then
+    [ -x /usr/bin/mihomo ] || { echo 'Mihomo is not installed'; exit 1; }
+    /usr/bin/mihomo -t -d "$stage" -f "$stage/config.json" > "$stage/check.log" 2>&1 || {
+        echo 'Mihomo rejected the configuration'; exit 1;
+    }
+    /usr/bin/mihomo -d "$stage" -f "$stage/config.json" > "$stage/check.log" 2>&1 &
+    testpid=$!
+    token=$(cat /etc/crossbox/controller.secret)
+    valid=0
+    for attempt in 1 2 3 4 5 6 7 8; do
+        if curl -fsS --max-time 1 --noproxy '*' -H "Authorization: Bearer $token" \
+            http://127.0.0.1:19091/providers/proxies/source > "$stage/provider.json" 2>/dev/null; then
+            if jsonfilter -i "$stage/provider.json" -e '@.proxies[0].name' | grep -q .; then valid=1; break; fi
+        fi
+        kill -0 "$testpid" 2>/dev/null || break
+        sleep 1
+    done
+    [ "$valid" = 1 ] || { echo 'No usable proxy nodes. Check the imported profile or subscription.'; exit 1; }
+    kill "$testpid" 2>/dev/null || :
+    wait "$testpid" 2>/dev/null || :
+    testpid=
+fi
+# The checked provider is kept for startup, with no second subscription fetch.
+runtime_changed=1
+/usr/bin/ucode /usr/libexec/crossbox/vpn-render.uc "$request" /etc/crossbox
+cp "$stage/proxies.txt" /etc/crossbox/proxies.txt
+cp "$request" /etc/crossbox/vpn.json.new
+mv /etc/crossbox/vpn.json.new /etc/crossbox/vpn.json
+rm -f /tmp/crossbox-vpn.error
+/etc/init.d/crossbox-vpn stop
+if [ "$enabled" = true ]; then
+    /etc/init.d/crossbox-vpn enable
+    /etc/init.d/crossbox-vpn start
+    ready=0
+    mode=$(jsonfilter -i "$request" -e '@.mode')
+    for attempt in 1 2 3 4 5; do
+        if curl -fsS --max-time 1 --noproxy '*' -H "Authorization: Bearer $token" http://127.0.0.1:9091/version >/dev/null 2>&1; then
+            if [ "$mode" = proxy ] || [ -d /sys/class/net/cb-vpn ]; then ready=1; break; fi
+        fi
+        sleep 1
+    done
+    [ "$ready" = 1 ] || { echo 'VPN startup failed; restoring previous configuration'; exit 1; }
+else
+    /etc/init.d/crossbox-vpn disable
+fi
+committed=1
+echo 'Configuration saved'

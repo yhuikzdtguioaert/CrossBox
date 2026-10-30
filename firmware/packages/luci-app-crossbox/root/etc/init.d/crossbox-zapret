@@ -1,0 +1,44 @@
+#!/bin/sh /etc/rc.common
+START=98
+STOP=11
+USE_PROCD=1
+
+start_service() {
+    [ "$(jsonfilter -i /etc/crossbox/zapret.json -e '@.enabled' 2>/dev/null)" = true ] || return 0
+    [ "$(uci -q get firewall.@defaults[0].flow_offloading)" != 1 ] || {
+        echo 'Flow offloading conflicts with NFQUEUE inspection' > /tmp/crossbox-zapret.error; return 1;
+    }
+    # nfqws2 drops privileges after startup and reopens its host list on reload.
+    # Domain names are public data; credentials remain in /etc/crossbox (0700).
+    cp /etc/crossbox/zapret-hosts.txt /var/run/crossbox-zapret-hosts.txt || return 1
+    chmod 644 /var/run/crossbox-zapret-hosts.txt
+    sysctl -qw net.netfilter.nf_conntrack_acct=1 || return 1
+    /usr/libexec/crossbox/zapret-firewall start || {
+        echo 'Cannot install NFQUEUE firewall rules' > /tmp/crossbox-zapret.error; return 1;
+    }
+    strategy=$(jsonfilter -i /etc/crossbox/zapret.json -e '@.strategy')
+    case "$strategy" in
+        split) strategy=multisplit:pos=2,sniext+1 ;;
+        disorder) strategy=multidisorder:pos=2,sniext+1 ;;
+        *) return 1 ;;
+    esac
+    procd_open_instance
+    procd_set_param command /usr/bin/nfqws2 --qnum=216 --fwmark=0x40000000 \
+        --lua-init=@/usr/share/zapret2/lua/zapret-lib.lua \
+        --lua-init=@/usr/share/zapret2/lua/zapret-antidpi.lua \
+        --filter-tcp=80,443 --hostlist=/var/run/crossbox-zapret-hosts.txt \
+        --out-range=-d12 --payload=http_req,tls_client_hello "--lua-desync=$strategy"
+    if [ "$(jsonfilter -i /etc/crossbox/zapret.json -e '@.quic')" = true ]; then
+        procd_append_param command --new --filter-udp=443 --hostlist=/var/run/crossbox-zapret-hosts.txt \
+            --blob=cb_quic:@/usr/share/zapret2/quic.bin --out-range=-n12 --payload=quic_initial \
+            --lua-desync=fake:blob=cb_quic:repeats=6
+    fi
+    procd_set_param respawn 3600 5 3
+    procd_set_param limits nofile='512 512'
+    procd_set_param file /etc/crossbox/zapret.json /etc/crossbox/zapret-hosts.txt
+    procd_set_param stdout 1
+    procd_set_param stderr 1
+    procd_close_instance
+}
+
+stop_service() { /usr/libexec/crossbox/zapret-firewall stop; }

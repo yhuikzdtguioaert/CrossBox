@@ -1,0 +1,118 @@
+{
+  "admin/crossbox": {
+    "title": "CrossBox",
+    "order": 5,
+    "action": {
+      "type": "firstchild"
+    },
+    "depends": {
+      "acl": [
+        "luci-app-crossbox"
+      ]
+    }
+  },
+  "admin/crossbox/dashboard": {
+    "title": "Dashboard",
+    "order": 1,
+    "action": {
+      "type": "template",
+      "path": "crossbox/view"
+    }
+  },
+  "admin/crossbox/clients": {
+    "title": "Clients",
+    "order": 2,
+    "action": {
+      "type": "template",
+      "path": "crossbox/view"
+    }
+  },
+  "admin/crossbox/network": {
+    "title": "Network",
+    "order": 5,
+    "action": {
+      "type": "template",
+      "path": "crossbox/view"
+    }
+  },
+  "admin/crossbox/wifi": {
+    "title": "Wi-Fi",
+    "order": 6,
+    "action": {
+      "type": "template",
+      "path": "crossbox/view"
+    }
+  },
+  "admin/crossbox/system": {
+    "title": "System",
+    "order": 7,
+    "action": {
+      "type": "template",
+      "path": "crossbox/view"
+    }
+  },
+  "admin/crossbox/firewall": {
+    "title": "Firewall",
+    "order": 8,
+    "action": {
+      "type": "template",
+      "path": "crossbox/view"
+    }
+  },
+  "admin/crossbox/services": {
+    "title": "Services",
+    "order": 9,
+    "action": {
+      "type": "template",
+      "path": "crossbox/view"
+    }
+  },
+  "admin/crossbox/statistics": {
+    "title": "Statistics",
+    "order": 10,
+    "action": {
+      "type": "template",
+      "path": "crossbox/view"
+    }
+  },
+  "admin/crossbox/tools": {
+    "title": "Tools",
+    "order": 11,
+    "action": {
+      "type": "template",
+      "path": "crossbox/view"
+    }
+  },
+  "admin/crossbox/vpn": {
+    "title": "VPN",
+    "order": 3,
+    "action": {
+      "type": "template",
+      "path": "crossbox/view"
+    }
+  },
+  "admin/crossbox/zapret": {
+    "title": "Zapret",
+    "order": 4,
+    "action": {
+      "type": "template",
+      "path": "crossbox/view"
+    }
+  },
+  "admin/crossbox/temperature": {
+    "title": "Temperature",
+    "order": 12,
+    "action": {
+      "type": "template",
+      "path": "crossbox/view"
+    }
+  },
+  "admin/crossbox/updates": {
+    "title": "Updates",
+    "order": 13,
+    "action": {
+      "type": "template",
+      "path": "crossbox/view"
+    }
+  }
+}

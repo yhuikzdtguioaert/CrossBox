@@ -1,0 +1,66 @@
+#!/bin/sh
+set -eu
+umask 077
+lock=/var/lock/crossbox-zapret
+mkdir "$lock" 2>/dev/null || { echo 'Zapret configuration is busy'; exit 1; }
+stage=$(mktemp -d /tmp/crossbox-zapret.XXXXXX)
+runtime_changed=0
+committed=0
+cleanup() {
+    if [ "$runtime_changed" = 1 ] && [ "$committed" = 0 ]; then
+        /etc/init.d/crossbox-zapret stop
+        for file in zapret.json zapret-hosts.txt; do
+            if [ -f "$stage/previous/$file" ]; then cp "$stage/previous/$file" "/etc/crossbox/$file"; else rm -f "/etc/crossbox/$file"; fi
+        done
+        if [ "$(jsonfilter -i /etc/crossbox/zapret.json -e '@.enabled' 2>/dev/null || :)" = true ]; then
+            /etc/init.d/crossbox-zapret enable
+            /etc/init.d/crossbox-zapret start
+        else
+            /etc/init.d/crossbox-zapret disable
+        fi
+    fi
+    rm -rf "$stage"
+    rmdir "$lock"
+}
+trap cleanup EXIT INT TERM
+request=/etc/crossbox/zapret-request.json
+mkdir "$stage/previous"
+for file in zapret.json zapret-hosts.txt; do
+    [ ! -f "/etc/crossbox/$file" ] || cp "/etc/crossbox/$file" "$stage/previous/"
+done
+/usr/bin/ucode /usr/libexec/crossbox/zapret-render.uc "$request" "$stage/hosts.txt"
+enabled=$(jsonfilter -i "$request" -e '@.enabled')
+if [ "$enabled" = true ]; then
+    [ -x /usr/bin/nfqws2 ] || { echo 'nfqws2 is not installed'; exit 1; }
+    # fw4 offloads established connections before NFQUEUE can inspect TLS payloads.
+    [ "$(uci -q get firewall.@defaults[0].flow_offloading || :)" != 1 ] || {
+        echo 'Disable flow offloading in Network → Firewall before enabling zapret'; exit 1;
+    }
+    /usr/bin/nfqws2 --intercept=0 --lua-init=@/usr/share/zapret2/lua/zapret-lib.lua \
+        --lua-init=@/usr/share/zapret2/lua/zapret-antidpi.lua > "$stage/check.log" 2>&1 || {
+        echo 'nfqws2 Lua runtime check failed'; exit 1;
+    }
+    /usr/libexec/crossbox/zapret-firewall print > "$stage/rules.nft"
+    nft -c -f "$stage/rules.nft" 2>/dev/null || { echo 'NFQUEUE kernel support is missing'; exit 1; }
+fi
+cp "$stage/hosts.txt" /etc/crossbox/zapret-hosts.txt.new
+cp "$request" /etc/crossbox/zapret.json.new
+/etc/init.d/crossbox-zapret stop
+runtime_changed=1
+mv /etc/crossbox/zapret-hosts.txt.new /etc/crossbox/zapret-hosts.txt
+mv /etc/crossbox/zapret.json.new /etc/crossbox/zapret.json
+rm -f /tmp/crossbox-zapret.error
+if [ "$enabled" = true ]; then
+    /etc/init.d/crossbox-zapret enable
+    /etc/init.d/crossbox-zapret start
+    ready=0
+    for attempt in 1 2 3 4 5; do
+        if grep -q '^[[:space:]]*216[[:space:]]' /proc/net/netfilter/nfnetlink_queue 2>/dev/null; then ready=1; break; fi
+        sleep 1
+    done
+    [ "$ready" = 1 ] || { echo 'nfqws2 startup failed; restoring previous configuration'; exit 1; }
+else
+    /etc/init.d/crossbox-zapret disable
+fi
+committed=1
+echo 'Configuration saved'

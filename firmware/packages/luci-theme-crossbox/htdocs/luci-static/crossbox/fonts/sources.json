@@ -1,0 +1,19 @@
+{
+  "family": "Roboto",
+  "license": "OFL-1.1",
+  "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/roboto/OFL.txt",
+  "files": [
+    {
+      "file": "roboto-cyrillic.woff2",
+      "url": "https://fonts.gstatic.com/s/roboto/v51/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3iUBGEe.woff2",
+      "sha256": "481dd0c01e6bbb129fd147eb5d8571016193cba141c4627ca60ceabdb5a46ea8",
+      "bytes": 23664
+    },
+    {
+      "file": "roboto-latin.woff2",
+      "url": "https://fonts.gstatic.com/s/roboto/v51/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3yUBA.woff2",
+      "sha256": "1404ca348bd75ef836f4dd8b6f2cc719458642d1237c368296b2fc652dca47dc",
+      "bytes": 43136
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+#!/bin/sh
+# Preserve a user's custom hostname across upgrades.
+name=$(uci -q get system.@system[0].hostname)
+if [ "$name" = OpenWrt ]; then
+    uci set system.@system[0].hostname='CrossBox'
+    uci commit system
+fi
+rename_default_wifi() {
+    local section=$1 radio band ssid
+    ssid=$(uci -q get "wireless.$section.ssid")
+    [ "$ssid" = OpenWrt ] || return 0
+    radio=$(uci -q get "wireless.$section.device")
+    band=$(uci -q get "wireless.$radio.band")
+    case "$band" in
+        2g) ssid=CrossBox_2G ;;
+        5g) ssid=CrossBox_5G ;;
+        6g) ssid=CrossBox_6G ;;
+        *) ssid=CrossBox ;;
+    esac
+    uci set "wireless.$section.ssid=$ssid"
+}
+. /lib/functions.sh
+config_load wireless
+config_foreach rename_default_wifi wifi-iface
+uci -q commit wireless
+exit 0

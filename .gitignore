@@ -73,3 +73,9 @@ Thumbs.db
 /private-key.pem
 /key-build
 /key-build.pub
+
+# Runtime VPN credentials must never enter firmware sources or Git
+/firmware/files/etc/crossbox/
+
+# Packaged GitHub Release assets
+/release/

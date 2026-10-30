@@ -1,0 +1,13 @@
+{# CrossBox owns its asset revision independently of upstream LuCI packages. #}
+{% include('header'); %}
+<script>L.env.resource_version = window.crossboxAssetVersion || L.env.resource_version;</script>
+{%
+    let page = ctx.path[-1];
+    if (index(['dashboard', 'clients', 'network', 'wifi', 'firewall', 'vpn', 'zapret', 'services', 'system', 'statistics', 'tools', 'temperature', 'updates'], page) < 0)
+        die('Unknown CrossBox page');
+%}
+<div id="view">
+    <div class="spinning">{{ _('Loading view…') }}</div>
+    <script>L.require('crossbox-router').then(function(router) { router.start(); });</script>
+</div>
+{% include('footer'); %}

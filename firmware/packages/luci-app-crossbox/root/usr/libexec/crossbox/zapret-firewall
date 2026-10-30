@@ -1,0 +1,29 @@
+#!/bin/sh
+set -eu
+# An independent inet table survives fw4 reloads and never flushes user rules.
+# Only the first twelve original-direction TCP packets enter userspace.
+case "${1:-}" in
+    stop) nft delete table inet crossbox_zapret 2>/dev/null || :; exit 0 ;;
+    print|start) ;;
+    *) exit 1 ;;
+esac
+rules() {
+    nft list table inet crossbox_zapret >/dev/null 2>&1 && echo 'delete table inet crossbox_zapret'
+    cat <<'EOF'
+table inet crossbox_zapret {
+    chain forward {
+        type filter hook forward priority -1; policy accept;
+        meta mark & 0x40000000 == 0 ct direction original tcp dport { 80, 443 } ct original packets 1-12 counter queue num 216 bypass
+    }
+    chain output {
+        type filter hook output priority -1; policy accept;
+        meta mark & 0x40000000 == 0 ct direction original tcp dport { 80, 443 } ct original packets 1-12 counter queue num 216 bypass
+    }
+}
+EOF
+    if [ "$(jsonfilter -i /etc/crossbox/zapret.json -e '@.quic' 2>/dev/null || :)" = true ]; then
+        echo 'add rule inet crossbox_zapret forward meta mark & 0x40000000 == 0 ct direction original udp dport 443 ct original packets 1-12 counter queue num 216 bypass'
+        echo 'add rule inet crossbox_zapret output meta mark & 0x40000000 == 0 ct direction original udp dport 443 ct original packets 1-12 counter queue num 216 bypass'
+    fi
+}
+if [ "$1" = print ]; then rules; else rules | nft -f -; fi

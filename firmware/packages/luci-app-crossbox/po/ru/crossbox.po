@@ -1,0 +1,29 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\nLanguage: ru\n"
+
+msgid "Dashboard"
+msgstr "Обзор"
+
+msgid "Clients"
+msgstr "Устройства"
+
+msgid "Network"
+msgstr "Сеть"
+
+msgid "System"
+msgstr "Система"
+
+msgid "Zapret"
+msgstr "Zapret"
+
+msgid "Services"
+msgstr "Сервисы"
+
+msgid "Firewall"
+msgstr "Межсетевой экран"
+
+msgid "Statistics"
+msgstr "Статистика"
+
+msgid "Tools"
+msgstr "Инструменты"

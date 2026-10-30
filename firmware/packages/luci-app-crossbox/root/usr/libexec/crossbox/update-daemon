@@ -1,0 +1,7 @@
+#!/bin/sh
+# Allow networking and time synchronization to settle after boot.
+sleep 60
+while :; do
+    /usr/bin/ucode /usr/libexec/crossbox/update-worker.uc cycle
+    sleep 300
+done

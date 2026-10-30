@@ -1,0 +1,14 @@
+[
+  {
+    "name": "YouTube",
+    "strategy": "split",
+    "quic": true,
+    "domains": ["youtube.com", "youtu.be", "googlevideo.com", "ytimg.com", "youtubei.googleapis.com"]
+  },
+  {
+    "name": "Discord",
+    "strategy": "disorder",
+    "quic": false,
+    "domains": ["discord.com", "discord.gg", "discordapp.com", "discordapp.net", "discord.media"]
+  }
+]

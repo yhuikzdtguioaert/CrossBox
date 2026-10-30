@@ -1,0 +1,8 @@
+#!/bin/sh
+umask 077
+mkdir -p /etc/crossbox
+chmod 700 /etc/crossbox
+[ -s /etc/crossbox/controller.secret ] || cat /proc/sys/kernel/random/uuid > /etc/crossbox/controller.secret
+[ -s /etc/crossbox/device.id ] || cat /proc/sys/kernel/random/uuid > /etc/crossbox/device.id
+/etc/init.d/crossbox-update enable
+exit 0

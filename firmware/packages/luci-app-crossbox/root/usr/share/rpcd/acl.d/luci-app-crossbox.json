@@ -1,0 +1,73 @@
+{
+  "luci-app-crossbox": {
+    "description": "CrossBox telemetry and protected VPN / zapret2 configuration",
+    "read": {
+      "uci": [
+        "network",
+        "wireless",
+        "system",
+        "firewall"
+      ],
+      "ubus": {
+        "crossbox": [
+          "telemetry",
+          "vpn_status",
+          "zapret_status",
+          "update_status"
+        ],
+        "system": [
+          "board",
+          "info"
+        ],
+        "network.interface": [
+          "dump"
+        ],
+        "network.wireless": [
+          "status"
+        ],
+        "luci-rpc": [
+          "getHostHints",
+          "getDHCPLeases",
+          "getNetworkDevices",
+          "getWirelessDevices"
+        ],
+        "luci": [
+          "getMountPoints"
+        ],
+        "rc": [
+          "list"
+        ]
+      }
+    },
+    "write": {
+      "uci": [
+        "network",
+        "wireless",
+        "system",
+        "firewall"
+      ],
+      "ubus": {
+        "crossbox": [
+          "vpn_get",
+          "vpn_save",
+          "vpn_select",
+          "vpn_test",
+          "vpn_refresh",
+          "zapret_get",
+          "zapret_save",
+          "language",
+          "diagnostic",
+          "vpn_probe",
+          "update_action",
+          "update_settings"
+        ],
+        "system": [
+          "reboot"
+        ],
+        "rc": [
+          "init"
+        ]
+      }
+    }
+  }
+}
